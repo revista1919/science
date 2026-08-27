@@ -506,19 +506,23 @@ function generateNewsHtmlTemplate({
 
   const t = texts[lang];
 
-  return `<!DOCTYPE html>
-<html lang="${lang}">
+  const generateArticleHTML = ({
+  lang, title, tags, isSpanish, authorName, areaInfo, domain, slug,
+  fecha, journalName, logo, t, readingTime, headerImageHtml, content,
+  oaSvg, socialLinks, socialIcons, summary
+}) => {
+  return `<html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <meta name="description" content="${title.substring(0, 160)}...">
+  <meta name="description" content="${summary || title.substring(0, 160)}...">
   <meta name="keywords" content="${tags.join(', ')}, ${isSpanish ? 'noticias, revista ciencias estudiantes, divulgación científica' : 'news, student science journal, scientific outreach'}">
   <meta name="author" content="${authorName}">
   <meta name="article:author" content="${authorName}">
   <meta name="article:section" content="${isSpanish ? areaInfo.es : areaInfo.en}">
   <meta name="article:tag" content="${tags.join(', ')}">
   <meta property="og:title" content="${title}">
-  <meta property="og:description" content="${title.substring(0, 160)}...">
+  <meta property="og:description" content="${summary || title.substring(0, 160)}...">
   <meta property="og:url" content="${domain}/news/${slug}${isSpanish ? '' : '.EN'}.html">
   <meta property="og:type" content="article">
   <meta property="og:article:author" content="${authorName}">
@@ -528,248 +532,84 @@ function generateNewsHtmlTemplate({
   <meta name="twitter:card" content="summary_large_image">
   <meta name="language" content="${lang}">
   <title>${title} - ${isSpanish ? 'Noticias' : 'News'} - ${journalName}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Lora:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tipografía Editorial Premium -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
   <style>
     :root {
-      --primary: #005a7d;
-      --primary-dark: #003e56;
-      --nyt-black: #121212;
-      --text-main: #222222;
-      --text-light: #595959;
-      --text-muted: #6b7280;
-      --border-color: #e5e7eb;
-      --bg-soft: #f8f9fa;
-      --bg-hover: #f3f4f6;
-      --accent: #c2410c;
-      --progress-color: #007398;
-      --proof-bg: #fafaf8;
+      /* Paleta Académica / Científica Premium */
+      --nyt-black: #0f172a;
+      --text-main: #111111;
+      --text-body: #202020;
+      --text-muted: #64748b;
+      --border-light: #e2e8f0;
+      --border-dark: #cbd5e1;
+      --border-heavy: #0f172a;
+      --bg-site: #fcfcfc;
+      --bg-sidebar: #f8fafc;
+      --accent-color: #ea580c;
+      --link-color: #0369a1;
+      --open-access: #f97316;
+      --success-color: #059669;
+      --warning-color: #d97706;
+      --error-color: #dc2626;
     }
 
     * {
-      max-width: 100vw;
       box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
     body {
-      margin: 0;
-      padding: 0;
       font-family: 'Lora', serif;
-      color: var(--text-main);
-      background-color: #fff;
-      line-height: 1.8;
+      color: var(--text-body);
+      background-color: var(--bg-site);
+      line-height: 1.7;
       -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       overflow-x: hidden;
     }
 
-    /* Progress Bar */
+    /* ========== PROGRESS BAR ========== */
     .progress-container {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
-      height: 4px;
+      height: 3px;
       background: transparent;
       z-index: 1001;
     }
-
     .progress-bar {
-      height: 4px;
-      background: linear-gradient(90deg, var(--progress-color), #00a8c5);
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-color), #f59e0b);
       width: 0%;
       transition: width 0.1s ease;
-      box-shadow: 0 0 10px rgba(0, 115, 152, 0.5);
     }
 
-    /* Reading Time Indicator */
-    .reading-time {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      background: var(--bg-soft);
-      padding: 4px 10px;
-      border-radius: 20px;
-      margin-left: 15px;
-    }
-
-    /* Audio Player */
-    .audio-player {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      z-index: 1000;
-      background: white;
-      border-radius: 60px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-      padding: 8px 16px 8px 12px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    /* ========== NAVEGACIÓN SUPERIOR ========== */
+    .site-header {
+      border-top: 4px solid var(--border-heavy);
+      border-bottom: 1px solid var(--border-light);
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(0,90,125,0.1);
-      transition: all 0.3s ease;
-    }
-
-    .audio-player:hover {
-      box-shadow: 0 6px 25px rgba(0,90,125,0.2);
-      transform: translateY(-2px);
-    }
-
-    .audio-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .audio-btn {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: none;
-      background: var(--primary);
-      color: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-    }
-
-    .audio-btn:hover {
-      background: var(--primary-dark);
-      transform: scale(1.05);
-    }
-
-    .audio-btn svg {
-      width: 18px;
-      height: 18px;
-      fill: currentColor;
-    }
-
-    .audio-status {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.75rem;
-      color: var(--text-main);
-      white-space: nowrap;
-    }
-
-    .speed-control {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 0 5px;
-    }
-
-    .speed-control input[type=range] {
-      width: 60px;
-      height: 4px;
-      -webkit-appearance: none;
-      background: var(--border-color);
-      border-radius: 2px;
-      outline: none;
-    }
-
-    .speed-control input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 12px;
-      height: 12px;
-      background: var(--primary);
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
-    #rateValue {
-      font-size: 10px;
-      font-weight: bold;
-      color: var(--primary);
-      min-width: 25px;
-    }
-
-    .voice-selector {
-      font-size: 10px;
-      padding: 3px;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      background: white;
-      max-width: 150px;
-    }
-
-    #toggleAdvancedBtn {
-      transition: transform 0.3s;
-    }
-
-    #toggleAdvancedBtn.active {
-      transform: rotate(30deg);
-      background: var(--primary);
-    }
-
-    .audio-player.expanded {
-      flex-wrap: wrap;
-      max-width: 400px;
-      border-radius: 20px;
-    }
-
-    .audio-player.expanded .speed-control,
-    .audio-player.expanded .voice-selector {
-      display: flex !important;
-      margin: 5px 0;
-    }
-
-    .audio-player {
-      transition: all 0.3s ease;
-    }
-
-    .audio-progress {
-      width: 100px;
-      height: 4px;
-      background: #e0e0e0;
-      border-radius: 2px;
-      margin: 0 10px;
-    }
-
-    .audio-progress-bar {
-      height: 100%;
-      background: var(--primary);
-      border-radius: 2px;
-      width: 0%;
-      transition: width 0.1s linear;
-    }
-
-    .language-indicator {
-      display: flex;
-      gap: 4px;
-      margin-left: 8px;
-      padding-left: 8px;
-      border-left: 1px solid var(--border-color);
-    }
-
-    .lang-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #ccc;
-    }
-
-    .lang-dot.active {
-      background: var(--primary);
-    }
-
-    /* Navigation minimal */
-    .nav-minimal {
-      border-bottom: 1px solid var(--border-color);
-      padding: 0.75rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: white;
       position: sticky;
       top: 0;
       z-index: 100;
+    }
+    .nav-minimal {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-family: 'Inter', sans-serif;
     }
-
     .nav-logo {
       display: flex;
       align-items: center;
@@ -777,450 +617,607 @@ function generateNewsHtmlTemplate({
       text-decoration: none;
       color: var(--nyt-black);
     }
-
     .nav-logo-img {
-      height: 36px;
+      height: 32px;
       width: auto;
-      object-fit: contain;
     }
-
     .nav-logo-text {
-      font-weight: 600;
-      font-size: 0.85rem;
-      border-left: 1px solid var(--border-color);
+      font-weight: 800;
+      font-size: 0.9rem;
+      letter-spacing: -0.02em;
+      border-left: 1px solid var(--border-light);
       padding-left: 12px;
-      color: var(--text-main);
     }
-
     .nav-links {
       display: flex;
       gap: 2rem;
       align-items: center;
     }
-
     .nav-link {
       text-decoration: none;
-      color: var(--text-main);
-      font-size: 0.8rem;
-      font-weight: 500;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
       transition: color 0.2s;
     }
-
     .nav-link:hover {
-      color: var(--primary);
+      color: var(--nyt-black);
     }
 
-    /* Article Body */
-    .article-body {
-      max-width: 700px;
-      margin: 60px auto;
+    /* ========== LAYOUT PRINCIPAL ========== */
+    .layout-container {
+      max-width: 1200px;
+      margin: 40px auto;
       padding: 0 20px;
-      font-size: 1.2rem;
+      display: grid;
+      grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+      gap: 60px;
+    }
+    @media (max-width: 900px) {
+      .layout-container {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
     }
 
+    /* ========== CABECERA DEL ARTÍCULO ========== */
+    .article-header {
+      margin-bottom: 30px;
+    }
+    .article-breadcrumbs {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .article-breadcrumbs a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .article-breadcrumbs a:hover {
+      text-decoration: underline;
+    }
+    .article-kicker {
+      font-family: 'Inter', sans-serif;
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      color: var(--nyt-black);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .article-kicker time {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .kicker-divider {
+      color: var(--border-dark);
+    }
+    .article-title {
+      font-family: 'Merriweather', serif;
+      font-size: clamp(2rem, 4vw, 3.25rem);
+      line-height: 1.15;
+      font-weight: 900;
+      color: var(--nyt-black);
+      margin-bottom: 20px;
+      letter-spacing: -0.01em;
+    }
+    .article-standfirst {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.125rem;
+      line-height: 1.5;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 30px;
+      max-width: 90%;
+    }
+    .article-author-line {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+    .article-author-line a {
+      color: var(--link-color);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .article-author-line a:hover {
+      text-decoration: underline;
+    }
+    .article-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-top: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      margin-bottom: 30px;
+    }
+    .share-group {
+      display: flex;
+      gap: 8px;
+    }
+    .share-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--border-dark);
+      background: #fff;
+      color: var(--nyt-black);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .share-btn:hover {
+      background: var(--bg-sidebar);
+      border-color: var(--nyt-black);
+    }
+    .share-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+    .meta-badges {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .oa-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--open-access);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ========== IMAGEN PRINCIPAL ========== */
+    .article-hero {
+      margin-bottom: 40px;
+    }
+    .article-hero img {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: var(--bg-sidebar);
+    }
+    .article-hero figcaption {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      padding: 12px 0;
+      line-height: 1.5;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .article-hero .credit {
+      color: #94a3b8;
+    }
+
+    /* ========== CUERPO DEL ARTÍCULO - CSS ROBUSTO ========== */
+    .article-body {
+      font-size: 1.15rem;
+    }
     .article-body p {
-      margin-bottom: 2rem;
+      margin-bottom: 1.75rem;
     }
-
     .article-body > p:first-of-type::first-letter {
       float: left;
-      font-size: 5rem;
-      line-height: 4rem;
+      font-family: 'Merriweather', serif;
+      font-size: 4.5rem;
+      line-height: 3.5rem;
       padding-top: 4px;
       padding-right: 8px;
-      padding-left: 3px;
-      font-family: 'Playfair Display', serif;
-      font-weight: 700;
-      color: var(--primary);
+      font-weight: 900;
+      color: var(--nyt-black);
     }
-
-    .article-body h2, .article-body h3 {
-      font-family: 'Playfair Display', serif;
-      font-size: 2rem;
-      margin-top: 50px;
-      border-top: 2px solid var(--primary);
-      padding-top: 20px;
+    .article-body h1 {
+      font-family: 'Merriweather', serif;
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: var(--nyt-black);
+      margin: 3rem 0 1.5rem 0;
+      line-height: 1.2;
     }
-
+    .article-body h2 {
+      font-family: 'Merriweather', serif;
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--nyt-black);
+      margin: 2.5rem 0 1rem 0;
+      line-height: 1.3;
+    }
     .article-body h3 {
-      font-size: 1.5rem;
-      border-top: 1px solid var(--border-color);
-    }
-
-    .article-body h4 {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Merriweather', serif;
       font-size: 1.35rem;
       font-weight: 700;
-      margin-top: 35px;
-      margin-bottom: 12px;
-      color: var(--text-main);
+      color: var(--nyt-black);
+      margin: 2rem 0 1rem 0;
     }
-
-    .article-body strong {
-      color: var(--primary);
+    .article-body h4, .article-body h5, .article-body h6 {
+      font-family: 'Merriweather', serif;
+      font-weight: 700;
+      color: var(--nyt-black);
+      margin: 1.5rem 0 0.75rem 0;
     }
-
     .article-body a {
-      color: var(--primary);
-      text-decoration: none;
-      border-bottom: 1px dotted var(--primary);
+      color: var(--link-color);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
     }
-
     .article-body a:hover {
-      border-bottom: 1px solid var(--primary);
+      text-decoration-thickness: 2px;
     }
-
-    .article-body img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 4px;
-      margin: 1.5rem 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
     .article-body blockquote {
-      margin: 3rem 2rem;
-      padding: 1rem 2rem;
-      border-left: 4px solid var(--primary);
-      background: var(--bg-soft);
+      margin: 2.5rem 0;
+      padding: 0 0 0 1.5rem;
+      border-left: 3px solid var(--nyt-black);
+      font-family: 'Merriweather', serif;
       font-style: italic;
-      color: var(--text-light);
+      font-size: 1.25rem;
+      color: #334155;
     }
-
     .article-body ul, .article-body ol {
-      margin: 1.5rem 0 1.5rem 2rem;
+      margin: 1.5rem 0 1.5rem 1.5rem;
+      padding: 0;
     }
-
     .article-body li {
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
     }
-
     .article-body table {
       width: 100%;
       border-collapse: collapse;
-      margin: 45px 0;
+      margin: 2.5rem 0;
       font-family: 'Inter', sans-serif;
-      font-size: 15px;
-      color: var(--text-main);
-      border-top: 2px solid var(--primary);
-      border-bottom: 1px solid var(--border-color);
+      font-size: 0.9rem;
       overflow-x: auto;
       display: block;
     }
-
     .article-body table th {
-      background: transparent;
-      color: var(--text-main);
-      padding: 12px 10px;
+      background: var(--nyt-black);
+      color: white;
+      padding: 12px 15px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      font-size: 12px;
+      font-size: 0.75rem;
       text-align: left;
-      border-bottom: 1px solid var(--primary);
     }
-
     .article-body table td {
-      padding: 14px 10px;
-      border: none;
-      border-bottom: 1px solid var(--border-color);
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--border-light);
     }
-
-    /* Hero Header */
-    .hero-header {
-      height: 70vh;
-      min-height: 400px;
-      background-size: cover;
-      background-position: center;
-      position: relative;
-      display: flex;
-      align-items: flex-end;
-      color: white;
+    .article-body table tr:nth-child(even) {
+      background: var(--bg-sidebar);
     }
-
-    .hero-overlay {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%);
-      display: flex;
-      align-items: flex-end;
-      padding: 60px 20px;
-    }
-
-    .hero-content, .standard-header {
-      max-width: 800px;
-      margin: 0 auto;
-      width: 100%;
-    }
-
-    .standard-header {
-      padding: 80px 20px 40px;
-      text-align: center;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-
-    .kicker {
+    .article-body img {
+      max-width: 100%;
+      height: auto;
       display: block;
-      font-family: 'Inter', sans-serif;
-      font-weight: 700;
-      text-transform: uppercase;
-      font-size: 0.7rem;
-      letter-spacing: 3px;
-      color: #e4dcb3;
-      margin-bottom: 15px;
+      margin: 2rem auto;
     }
-
-    h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(2.5rem, 5vw, 4rem);
-      line-height: 1.1;
-      margin: 0 0 20px 0;
-      font-weight: 900;
+    .article-body video {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 2rem auto;
     }
-
-    .hero-meta {
+    .article-body iframe {
+      max-width: 100%;
+      margin: 2rem auto;
+      display: block;
+    }
+    .article-body code {
+      font-family: 'JetBrains Mono', monospace;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+    .article-body pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 2rem 0;
+    }
+    .article-body pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+    .article-body .math-block {
+      overflow-x: auto;
+      padding: 1rem 0;
+      margin: 2rem 0;
+    }
+    .article-body .ql-editor img {
+      max-width: 100%;
+      height: auto;
+    }
+    .article-body .ql-editor iframe {
+      max-width: 100%;
+    }
+    .article-body .ql-editor .ql-video {
+      max-width: 100%;
+    }
+    .article-body figure {
+      margin: 2.5rem 0;
+    }
+    .article-body figure img {
+      margin: 0;
+    }
+    .article-body figcaption {
       font-family: 'Inter', sans-serif;
       font-size: 0.85rem;
-      opacity: 0.9;
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    /* Author Link */
-    .author-link {
-      color: #fff;
-      text-decoration: none;
-      font-weight: 600;
-      border-bottom: 1px solid rgba(255,255,255,0.3);
-      transition: all 0.2s;
-    }
-
-    .author-link:hover {
-      border-bottom-color: #fff;
-    }
-
-    /* Featured Badge */
-    .featured-badge {
-      background: #fbbf24;
-      color: #78350f;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-weight: 700;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    /* Action Bar */
-    .action-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      max-width: 700px;
-      margin: 40px auto 20px;
-      padding: 20px 20px 0;
-      border-top: 1px solid var(--border-color);
-      font-family: 'Inter', sans-serif;
-    }
-
-    .share-buttons {
-      display: flex;
-      gap: 1rem;
-    }
-
-    .share-btn {
-      background: none;
-      border: none;
-      padding: 8px;
-      cursor: pointer;
       color: var(--text-muted);
-      transition: color 0.2s;
+      margin-top: 0.75rem;
+      text-align: center;
+    }
+    .article-body hr {
+      border: none;
+      border-top: 1px solid var(--border-light);
+      margin: 3rem 0;
     }
 
-    .share-btn:hover {
-      color: var(--primary);
+    /* ========== BARRA LATERAL ========== */
+    .sidebar-section {
+      margin-bottom: 40px;
+      border-top: 2px solid var(--nyt-black);
+      padding-top: 15px;
+    }
+    .sidebar-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--nyt-black);
+      margin-bottom: 20px;
+    }
+    .subject-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .subject-tag {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--link-color);
+      background: #f0f7ff;
+      padding: 6px 12px;
+      border-radius: 2px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .subject-tag:hover {
+      background: #e0f2fe;
+    }
+    .newsletter-box {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-light);
+      padding: 24px;
+      text-align: left;
+    }
+    .newsletter-box h4 {
+      font-family: 'Merriweather', serif;
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--nyt-black);
+      margin-bottom: 10px;
+    }
+    .newsletter-box p {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .newsletter-input {
+      width: 100%;
+      padding: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      border: 1px solid var(--border-dark);
+      margin-bottom: 10px;
+      outline: none;
+    }
+    .newsletter-input:focus {
+      border-color: var(--nyt-black);
+    }
+    .newsletter-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--nyt-black);
+      color: #fff;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .newsletter-btn:hover {
+      background: var(--accent-color);
     }
 
-    .oa-label {
+    /* ========== REPRODUCTOR DE AUDIO ========== */
+    .audio-player-editorial {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      background: #fff;
+      border: 1px solid var(--nyt-black);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      padding: 12px 16px;
       display: flex;
       align-items: center;
-      color: #F48120;
-      font-weight: 500;
-      font-size: 0.9rem;
-      gap: 4px;
-    }
-
-    /* Back Navigation */
-    .back-nav {
-      max-width: 700px;
-      margin: 40px auto 20px;
-      border-top: 2px solid var(--nyt-black);
-      padding: 20px 20px 0;
-      display: flex;
-      justify-content: space-between;
+      gap: 16px;
       font-family: 'Inter', sans-serif;
+      transition: all 0.3s ease;
+      border-radius: 4px;
     }
-
-    .back-nav a {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      font-weight: 600;
-      color: var(--nyt-black);
-      text-decoration: none;
-      transition: color 0.2s;
+    .audio-controls {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-
-    .back-nav a:hover {
-      color: var(--primary);
+    .audio-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--border-dark);
+      background: transparent;
+      color: var(--nyt-black);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .audio-btn:hover {
+      background: var(--bg-sidebar);
+      border-color: var(--nyt-black);
+    }
+    .audio-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+    .audio-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .audio-status {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--nyt-black);
+    }
+    .audio-progress {
+      width: 120px;
+      height: 2px;
+      background: var(--border-light);
+      margin-top: 6px;
+      position: relative;
+    }
+    .audio-progress-bar {
+      height: 100%;
+      background: var(--accent-color);
+      width: 0%;
+      transition: width 0.1s linear;
     }
 
-    /* Footer */
+    /* ========== FOOTER ========== */
     .footer {
-      background: #1a1a1a;
-      color: white;
-      padding: 60px 20px 30px;
-      margin-top: 60px;
-      border-top: 1px solid #333;
+      border-top: 1px solid var(--border-light);
+      background: #fff;
+      padding: 60px 20px 40px;
+      margin-top: 80px;
       font-family: 'Inter', sans-serif;
     }
-
     .footer-container {
       max-width: 1200px;
       margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 40px;
+      margin-bottom: 20px;
     }
-
+    @media (max-width: 768px) {
+      .footer-container {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+    }
+    .footer-brand {
+      font-family: 'Merriweather', serif;
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: var(--nyt-black);
+      margin-bottom: 15px;
+    }
+    .footer-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 300px;
+    }
     .footer-social {
       display: flex;
-      justify-content: center;
-      gap: 40px;
-      margin-bottom: 40px;
+      gap: 15px;
+      margin-top: 20px;
     }
-
-    .social-icon {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      color: #999;
-      text-decoration: none;
-      transition: all 0.3s;
+    .footer-social a {
+      color: var(--nyt-black);
+      transition: color 0.2s;
     }
-
-    .social-icon:hover {
-      color: white;
-      transform: translateY(-3px);
+    .footer-social a:hover {
+      color: var(--link-color);
     }
-
-    .social-icon svg {
-      width: 24px;
-      height: 24px;
-      fill: currentColor;
-    }
-
-    .social-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      font-weight: 500;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .social-icon:hover .social-label {
-      opacity: 1;
-    }
-
-    .footer-contact {
-      text-align: center;
-      margin: 40px 0;
-      padding: 20px 0;
-      border-top: 1px solid #333;
-      border-bottom: 1px solid #333;
-    }
-
-    .contact-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 3px;
-      color: #666;
-      display: block;
-      margin-bottom: 10px;
-    }
-
-    .contact-email {
-      color: white;
-      text-decoration: none;
-      font-size: 1rem;
-      transition: color 0.3s;
-    }
-
-    .contact-email:hover {
-      color: var(--primary);
-    }
-
     .footer-bottom {
-      text-align: center;
-      font-size: 9px;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 4px;
-      padding-top: 30px;
-    }
-
-    .footer-links {
       display: flex;
-      justify-content: center;
-      gap: 20px;
-      margin: 20px 0;
-      font-size: 9px;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      max-width: 1200px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      gap: 15px;
     }
-
-    .footer-links a {
-      color: #777;
+    .footer-bottom-links {
+      display: flex;
+      gap: 15px;
+    }
+    .footer-bottom-links a {
+      color: var(--text-muted);
       text-decoration: none;
-      transition: color 0.3s;
+    }
+    .footer-bottom-links a:hover {
+      text-decoration: underline;
     }
 
-    .footer-links a:hover {
-      color: white;
-    }
-
-    /* Mobile Optimizations */
+    /* ========== RESPONSIVE ========== */
     @media (max-width: 768px) {
-      .audio-player {
-        bottom: 20px;
-        right: 20px;
-        padding: 6px 12px;
+      .audio-player-editorial {
+        bottom: 15px;
+        right: 15px;
+        padding: 10px 12px;
       }
-      
-      .footer-social {
-        gap: 20px;
-        flex-wrap: wrap;
+      .article-body {
+        font-size: 1rem;
       }
-      
       .nav-minimal {
-        padding: 0.5rem 1rem;
+        padding: 10px 15px;
       }
-      
-      .nav-logo-img {
-        height: 28px;
-      }
-      
       .nav-logo-text {
         display: none;
       }
-      
-      .nav-links {
-        gap: 1rem;
-      }
     }
   </style>
+
   <!-- MathJax para renderizado de ecuaciones -->
   <script>
     window.MathJax = {
@@ -1241,516 +1238,288 @@ function generateNewsHtmlTemplate({
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
 </head>
 <body>
-  <!-- Progress Bar -->
+  
+  <!-- Barra de progreso superior -->
   <div class="progress-container">
     <div class="progress-bar" id="progressBar"></div>
   </div>
 
-  <!-- Audio Player Flotante -->
-  <div class="audio-player" id="audioPlayer">
-    <div class="audio-controls">
-      <button class="audio-btn" id="playPauseBtn" title="${t.listen}">
-        <svg id="playIcon" viewBox="0 0 24 24">
-          <path d="M8 5v14l11-7z"/>
-        </svg>
-      </button>
-      <button class="audio-btn" id="stopBtn" title="${t.stop}" style="background: #666;">
-        <svg viewBox="0 0 24 24">
-          <rect x="6" y="6" width="12" height="12"/>
-        </svg>
-      </button>
-    </div>
-    
-    <div class="speed-control" style="display: none;">
-      <input type="range" id="rateControl" min="0.5" max="2" step="0.1" value="1">
-      <span id="rateValue">1x</span>
-    </div>
-    
-    <select id="voiceSelector" class="voice-selector" style="display: none;">
-      <option value="">${isSpanish ? 'Voz por defecto' : 'Default voice'}</option>
-    </select>
-    
-    <button class="audio-btn" id="toggleAdvancedBtn" title="${isSpanish ? 'Configuración' : 'Settings'}" style="background: #4a5568; width: 30px; height: 30px;">
-      <svg viewBox="0 0 24 24" width="14" height="14">
-        <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94 0 .31.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-      </svg>
-    </button>
-    
-    <div class="audio-progress">
-      <div class="audio-progress-bar" id="audioProgressBar"></div>
-    </div>
-    
-    <div class="audio-status" id="audioStatus">
-      <span id="statusText">${t.listen}</span>
-      <div class="language-indicator">
-        <span class="lang-dot ${lang === 'es' ? 'active' : ''}"></span>
-        <span class="lang-dot ${lang === 'en' ? 'active' : ''}"></span>
+  <!-- Navegación -->
+  <header class="site-header">
+    <nav class="nav-minimal">
+      <a href="/" class="nav-logo">
+        <img src="${logo}" alt="Logo" class="nav-logo-img">
+        <span class="nav-logo-text">${journalName}</span>
+      </a>
+      <div class="nav-links">
+        <a href="${isSpanish ? '/news' : '/news/index.EN.html'}" class="nav-link">${t.backToNews}</a>
+        <a href="${isSpanish ? '/submit' : '/en/submit'}" class="nav-link">${isSpanish ? 'Envíos' : 'Submit'}</a>
       </div>
-    </div>
-  </div>
-
-  <nav class="nav-minimal">
-    <a href="/" class="nav-logo">
-      <img src="${logo}" alt="Logo" class="nav-logo-img">
-      <span class="nav-logo-text">${journalName}</span>
-    </a>
-    <div class="nav-links">
-      <a href="${isSpanish ? '/news' : '/news/index.EN.html'}" class="nav-link">${t.backToNews}</a>
-      <a href="${isSpanish ? '/submit' : '/en/submit'}" class="nav-link">${isSpanish ? 'Envíos' : 'Submissions'}</a>
-      <a href="${isSpanish ? '/faq' : '/en/faq'}" class="nav-link">FAQ</a>
-    </div>
-  </nav>
-
-  <header>
-    ${headerImageHtml}
-    <div style="max-width: 700px; margin: 0 auto; padding: 0 20px;">
-      <span class="reading-time">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
-        </svg>
-        ${readingTime.display} ${t.readingTime}
-      </span>
-    </div>
+    </nav>
   </header>
 
-  <main class="article-body" id="articleContent">
-    <article class="ql-editor">
-      ${content}
+  <main class="layout-container">
+    
+    <!-- COLUMNA PRINCIPAL -->
+    <article class="article-main">
+      <header class="article-header">
+        
+        <div class="article-breadcrumbs">
+          <a href="/">Home</a> 
+          <span>›</span> 
+          <a href="${isSpanish ? '/news' : '/news/index.EN.html'}">${isSpanish ? 'Noticias' : 'News'}</a>
+          <span>›</span> 
+          <span>${isSpanish ? areaInfo.es : areaInfo.en}</span>
+        </div>
+
+        <div class="article-kicker">
+          <span>${isSpanish ? 'NOTICIA' : 'NEWS'}</span>
+          <span class="kicker-divider">|</span>
+          <time>${fecha}</time>
+        </div>
+
+        <h1 class="article-title">${title}</h1>
+        
+        ${summary ? `<div class="article-standfirst">${summary}</div>` : ''}
+
+        <div class="article-author-line">
+          ${isSpanish ? 'Por' : 'By'} <a href="#">${authorName}</a>
+        </div>
+
+        <!-- Barra de Acciones / Meta -->
+        <div class="article-actions">
+          <div class="share-group">
+            <button class="share-btn" onclick="shareOnTwitter()" title="Twitter">
+              <svg viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>
+            </button>
+            <button class="share-btn" onclick="shareOnFacebook()" title="Facebook">
+              <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            </button>
+            <button class="share-btn" onclick="shareOnLinkedIn()" title="LinkedIn">
+              <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+            </button>
+          </div>
+          
+          <div class="meta-badges">
+            <span class="reading-time-badge">
+              ⏱ ${readingTime.display} ${t.readingTime}
+            </span>
+            <span class="oa-badge" title="Open Access">
+              ${oaSvg} OA
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Imagen Destacada -->
+      <figure class="article-hero">
+        ${headerImageHtml}
+        <figcaption>
+          ${isSpanish ? 'Fotografía representativa relacionada a la investigación.' : 'Representative photograph related to the research.'} <span class="credit">${isSpanish ? 'Crédito' : 'Credit'}: ${journalName}</span>
+        </figcaption>
+      </figure>
+
+      <!-- Cuerpo del texto -->
+      <div class="article-body" id="articleContent">
+        ${content}
+      </div>
+      
+      <!-- Cita del Artículo -->
+      <div class="sidebar-section" style="margin-top: 60px;">
+        <h3 class="sidebar-title">${t.citation}</h3>
+        <p style="font-family: 'Inter', sans-serif; font-size: 0.85rem; color: var(--text-muted);">
+          ${authorName}. (${new Date(fecha).getFullYear()}). ${title}. ${journalName}. ${domain}/news/${slug}${isSpanish ? '' : '.EN'}.html
+        </p>
+      </div>
+
     </article>
 
-    <!-- Tags -->
-    ${tags.length > 0 ? `
-    <div class="tags-section" style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
-      <h3 style="font-family: 'Inter', sans-serif; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 1rem;">
-        ${t.tags}
-      </h3>
-      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-        ${tags.map(tag => `
-          <span style="background: var(--bg-soft); padding: 4px 12px; border-radius: 20px; font-family: 'Inter', sans-serif; font-size: 0.75rem; color: var(--text-light);">
-            ${tag}
-          </span>
-        `).join('')}
+    <!-- COLUMNA LATERAL -->
+    <aside class="article-sidebar">
+      
+      ${tags.length > 0 ? `
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">${isSpanish ? 'Materias' : 'Subjects'}</h3>
+        <div class="subject-list">
+          ${tags.map(tag => `<a href="#" class="subject-tag">${tag}</a>`).join('')}
+        </div>
       </div>
-    </div>
-    ` : ''}
+      ` : ''}
 
-    <!-- Citation -->
-    <div class="citation-section" style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-soft); border-radius: 8px;">
-      <h3 style="font-family: 'Inter', sans-serif; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 0.5rem;">
-        ${t.citation}
-      </h3>
-      <p style="font-family: 'Inter', sans-serif; font-size: 0.85rem; color: var(--text-light); margin: 0;">
-        ${authorName}. (${new Date(fecha).getFullYear()}). ${title}. ${journalName}. ${domain}/news/${slug}${isSpanish ? '' : '.EN'}.html
-      </p>
-    </div>
+      <!-- Newsletter -->
+      <div class="sidebar-section">
+        <div class="newsletter-box">
+          <h4>${isSpanish ? 'Suscríbete al Boletín' : 'Sign up to the Briefing'}</h4>
+          <p>${isSpanish ? 'Un resumen esencial de noticias científicas, opinión y análisis, entregado en tu bandeja de entrada.' : 'An essential round-up of science news, opinion and analysis, delivered to your inbox.'}</p>
+          <input type="email" class="newsletter-input" placeholder="${isSpanish ? 'Tu correo electrónico' : 'Your email address'}">
+          <button class="newsletter-btn">${isSpanish ? 'Suscribirse' : 'Sign Up'}</button>
+        </div>
+      </div>
+
+      <!-- Artículos Relacionados -->
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">${isSpanish ? 'Artículos Relacionados' : 'Related Articles'}</h3>
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border-light); padding-bottom: 15px;">
+          <div style="flex: 1;">
+            <a href="#" style="font-family: 'Merriweather', serif; font-size: 0.9rem; font-weight: 700; color: var(--nyt-black); text-decoration: none; line-height: 1.3; display: block; margin-bottom: 6px;">
+              ${isSpanish ? 'Nuevos avances en la investigación científica estudiantil' : 'New breakthroughs in student scientific research'}
+            </a>
+            <span style="font-family: 'Inter', sans-serif; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">
+              News | ${new Date().getFullYear()}
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
   </main>
 
-  <div class="action-bar">
-    <div class="share-buttons">
-      <button class="share-btn" onclick="shareOnTwitter()" title="Twitter">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/>
-        </svg>
+  <!-- Reproductor de Audio -->
+  <div class="audio-player-editorial" id="audioPlayer">
+    <div class="audio-controls">
+      <button class="audio-btn" id="playPauseBtn" title="${t.listen}">
+        <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
       </button>
-      <button class="share-btn" onclick="shareOnFacebook()" title="Facebook">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
-        </svg>
-      </button>
-      <button class="share-btn" onclick="shareOnLinkedIn()" title="LinkedIn">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
-          <rect x="2" y="9" width="4" height="12"/>
-          <circle cx="4" cy="4" r="2"/>
-        </svg>
+      <button class="audio-btn" id="stopBtn" title="${t.stop}">
+        <svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10"/></svg>
       </button>
     </div>
-    <span class="oa-label">
-      ${oaSvg}
-      Open Access
-    </span>
-  </div>
-
-  <div class="back-nav">
-    <a href="${isSpanish ? '/news' : '/news/index.EN.html'}">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
-      </svg>
-      ${t.backToNews}
-    </a>
-    <a href="${isSpanish ? '/es/' : '/en/'}">
-      ${t.backToHome}
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
-      </svg>
-    </a>
+    <div class="audio-info">
+      <span class="audio-status" id="statusText">${t.listen}</span>
+      <div class="audio-progress">
+        <div class="audio-progress-bar" id="audioProgressBar"></div>
+      </div>
+    </div>
+    
+    <select id="voiceSelector" style="display:none;"></select>
+    <input type="range" id="rateControl" style="display:none;" min="0.5" max="2" step="0.1" value="1">
+    <button id="toggleAdvancedBtn" style="display:none;"></button>
   </div>
 
   <footer class="footer">
     <div class="footer-container">
-      <div class="footer-social">
-        <a href="${socialLinks.instagram}" target="_blank" rel="noopener" class="social-icon">
-          ${socialIcons.instagram}
-          <span class="social-label">Instagram</span>
-        </a>
-        <a href="${socialLinks.youtube}" target="_blank" rel="noopener" class="social-icon">
-          ${socialIcons.youtube}
-          <span class="social-label">YouTube</span>
-        </a>
-        <a href="${socialLinks.tiktok}" target="_blank" rel="noopener" class="social-icon">
-          ${socialIcons.tiktok}
-          <span class="social-label">TikTok</span>
-        </a>
-        <a href="${socialLinks.spotify}" target="_blank" rel="noopener" class="social-icon">
-          ${socialIcons.spotify}
-          <span class="social-label">Spotify</span>
-        </a>
+      <div>
+        <div class="footer-brand">${journalName}</div>
+        <p class="footer-desc">
+          ${isSpanish ? 'Publicación oficial dedicada a la divulgación e investigación científica desarrollada por estudiantes.' : 'Official publication dedicated to science outreach and research developed by students.'}
+        </p>
       </div>
-
-      <div class="footer-contact">
-        <span class="contact-label">${t.contact}</span>
-        <a href="https://mail.google.com/mail/?view=cm&fs=1&to=contact@revistacienciasestudiantes.com" 
-           target="_blank" 
-           class="contact-email"
-           rel="noopener">
-          contact@revistacienciasestudiantes.com
-        </a>
-      </div>
-
-      <div class="footer-bottom">
-        <div class="footer-links">
-          <a href="/privacy${isSpanish ? '' : 'EN'}.html">Privacidad</a>
-          <span>|</span>
-          <a href="/terms${isSpanish ? '' : 'EN'}.html">Términos</a>
-          <span>|</span>
-          <a href="/credits${isSpanish ? '' : 'EN'}.html">Créditos</a>
+      <div style="display: flex; justify-content: flex-end; align-items: flex-start;">
+        <div class="footer-social">
+          <a href="${socialLinks.instagram || '#'}" title="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></a>
+          <a href="${socialLinks.twitter || '#'}" title="X / Twitter"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+          <a href="${socialLinks.linkedin || '#'}" title="LinkedIn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></a>
         </div>
-        <p>© ${new Date().getFullYear()} ${journalName} · ISSN 3087-2839</p>
+      </div>
+    </div>
+    
+    <div class="footer-bottom">
+      <div>© ${new Date().getFullYear()} ${journalName}. ISSN 3087-2839</div>
+      <div class="footer-bottom-links">
+        <a href="/privacy${isSpanish ? '' : 'EN'}.html">${isSpanish ? 'Política de Privacidad' : 'Privacy Policy'}</a>
+        <a href="/terms${isSpanish ? '' : 'EN'}.html">${isSpanish ? 'Términos de Uso' : 'Terms of Use'}</a>
+        <a href="mailto:contact@revistacienciasestudiantes.com">${isSpanish ? 'Contacto' : 'Contact Us'}</a>
       </div>
     </div>
   </footer>
-  
+
   <script>
     // ========== PROGRESS BAR ==========
     window.addEventListener('scroll', () => {
       const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
       const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
       const scrolled = (winScroll / height) * 100;
-      document.getElementById('progressBar').style.width = scrolled + '%';
+      const progressEl = document.getElementById('progressBar');
+      if(progressEl) progressEl.style.width = scrolled + '%';
     });
 
-    // ========== TEXTO A VOZ ==========
+    // ========== SHARING ==========
+    function shareOnTwitter() {
+      const url = encodeURIComponent(window.location.href);
+      const title = encodeURIComponent(document.title);
+      window.open('https://twitter.com/intent/tweet?url=' + url + '&text=' + title, '_blank');
+    }
+    function shareOnFacebook() {
+      const url = encodeURIComponent(window.location.href);
+      window.open('https://www.facebook.com/sharer/sharer.php?u=' + url, '_blank');
+    }
+    function shareOnLinkedIn() {
+      const url = encodeURIComponent(window.location.href);
+      window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + url, '_blank');
+    }
+
+    // ========== TEXT TO SPEECH ==========
     document.addEventListener('DOMContentLoaded', function() {
       const playPauseBtn = document.getElementById('playPauseBtn');
       const stopBtn = document.getElementById('stopBtn');
-      const toggleAdvancedBtn = document.getElementById('toggleAdvancedBtn');
       const statusText = document.getElementById('statusText');
       const playIcon = document.getElementById('playIcon');
-      const voiceSelector = document.getElementById('voiceSelector');
-      const rateControl = document.getElementById('rateControl');
-      const rateValue = document.getElementById('rateValue');
       const audioProgressBar = document.getElementById('audioProgressBar');
-      const audioPlayer = document.getElementById('audioPlayer');
       const articleContentEl = document.getElementById('articleContent');
 
-      if (!playPauseBtn || !stopBtn || !statusText || !playIcon || !voiceSelector || 
-          !rateControl || !rateValue || !audioProgressBar || !audioPlayer || !articleContentEl) {
-        console.warn('Algunos elementos de texto a voz no existen en la página');
-        return;
-      }
+      if (!playPauseBtn || !stopBtn || !statusText || !playIcon || !audioProgressBar || !articleContentEl) return;
 
       let utterance = null;
       let isPlaying = false;
-      let voicesReady = false;
-      let selectedVoice = null;
       let synthesis = window.speechSynthesis;
       let currentCharIndex = 0;
-      let fullText = '';
-      let rate = 1;
-      let resumeTimer = null;
-
-      fullText = (articleContentEl.innerText || articleContentEl.textContent || '').trim();
+      let fullText = (articleContentEl.innerText || articleContentEl.textContent || '').trim();
       const totalChars = fullText.length;
-
-      let lang = 'es';
-      if (document.body.dataset.lang) {
-        lang = document.body.dataset.lang;
-      } else {
-        const metaLang = document.querySelector('meta[name="language"]');
-        if (metaLang && metaLang.content) {
-          lang = metaLang.content;
-        } else {
-          const htmlLang = document.documentElement.lang;
-          if (htmlLang) {
-            lang = htmlLang.substring(0, 2);
-          }
-        }
-      }
-      
-      const voiceLang = lang === 'es' ? 'es-ES' : 'en-US';
-
-      function loadVoices() {
-        return new Promise((resolve) => {
-          if (!synthesis) {
-            console.error('Speech synthesis no soportado');
-            resolve();
-            return;
-          }
-          
-          let voices = synthesis.getVoices();
-          if (voices.length > 0) {
-            populateVoiceList(voices);
-            selectVoice(voices);
-            voicesReady = true;
-            resolve();
-          } else {
-            synthesis.onvoiceschanged = () => {
-              voices = synthesis.getVoices();
-              populateVoiceList(voices);
-              selectVoice(voices);
-              voicesReady = true;
-              resolve();
-            };
-          }
-        });
-      }
-
-      function populateVoiceList(voices) {
-        if (!voiceSelector) return;
-        
-        voiceSelector.innerHTML = '';
-        
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = lang === 'es' ? 'Voz por defecto' : 'Default voice';
-        voiceSelector.appendChild(defaultOption);
-        
-        if (!voices || voices.length === 0) {
-          console.warn('No hay voces disponibles');
-          return;
-        }
-        
-        const langPrefix = voiceLang.split('-')[0];
-        const langVoices = [];
-        const otherVoices = [];
-        
-        voices.forEach(voice => {
-          if (voice.lang && voice.lang.startsWith(langPrefix)) {
-            langVoices.push(voice);
-          } else {
-            otherVoices.push(voice);
-          }
-        });
-        
-        langVoices.forEach(voice => {
-          const option = document.createElement('option');
-          option.value = voice.name || '';
-          const voiceName = String(voice.name || 'Voz sin nombre');
-          const voiceLang_str = String(voice.lang || 'idioma desconocido');
-          const isDefault = voice.default ? ' [Default]' : '';
-          option.textContent = voiceName + ' (' + voiceLang_str + ')' + isDefault;
-          option.dataset.lang = voiceLang_str;
-          voiceSelector.appendChild(option);
-        });
-        
-        if (otherVoices.length > 0) {
-          const separator = document.createElement('option');
-          separator.disabled = true;
-          separator.textContent = '──────────';
-          voiceSelector.appendChild(separator);
-          
-          otherVoices.forEach(voice => {
-            const option = document.createElement('option');
-            option.value = voice.name || '';
-            const voiceName = String(voice.name || 'Voz sin nombre');
-            const voiceLang_str = String(voice.lang || 'idioma desconocido');
-            option.textContent = voiceName + ' (' + voiceLang_str + ')';
-            option.dataset.lang = voiceLang_str;
-            voiceSelector.appendChild(option);
-          });
-        }
-      }
-
-      function selectVoice(voices) {
-        if (!voices || voices.length === 0) return;
-        
-        selectedVoice = voices.find(voice => voice.lang === voiceLang && voice.name && voice.name.includes('Google')) ||
-                        voices.find(voice => voice.lang === voiceLang && voice.name && voice.name.includes('Premium')) ||
-                        voices.find(voice => voice.lang === voiceLang);
-        
-        if (!selectedVoice) {
-          selectedVoice = voices.find(voice => voice.default);
-        }
-        
-        if (selectedVoice && voiceSelector) {
-          const options = Array.from(voiceSelector.options);
-          const option = options.find(opt => opt.value === selectedVoice.name);
-          if (option) option.selected = true;
-        }
-        
-        console.log('Voz seleccionada:', selectedVoice ? selectedVoice.name : 'Default');
-      }
+      let lang = document.documentElement.lang.substring(0, 2) || 'es';
 
       function stopSpeech() {
-        if (synthesis) {
-          synthesis.cancel();
-        }
-        if (resumeTimer) {
-          clearTimeout(resumeTimer);
-          resumeTimer = null;
-        }
+        if (synthesis) synthesis.cancel();
         utterance = null;
         isPlaying = false;
         updateUI();
       }
 
-      function createUtteranceFromPosition() {
-        if (!fullText || currentCharIndex >= totalChars) {
-          return null;
-        }
-
+      function createUtterance() {
+        if (!fullText || currentCharIndex >= totalChars) return null;
         const remainingText = fullText.substring(currentCharIndex);
-        if (!remainingText.trim()) {
-          return null;
-        }
+        if (!remainingText.trim()) return null;
 
         const newUtterance = new SpeechSynthesisUtterance(remainingText);
-        newUtterance.lang = voiceLang;
+        newUtterance.lang = lang === 'es' ? 'es-ES' : 'en-US';
+        newUtterance.rate = 1;
 
-        if (selectedVoice) {
-          newUtterance.voice = selectedVoice;
-        }
-
-        newUtterance.rate = rate;
-        newUtterance.pitch = 1;
-        newUtterance.volume = 1;
-
-        newUtterance.onstart = () => {
-          isPlaying = true;
-          updateUI();
-        };
-
-        newUtterance.onend = () => {
-          isPlaying = false;
-          currentCharIndex = totalChars;
-          updateProgress();
-          updateUI();
-        };
-
-        newUtterance.onboundary = (event) => {
-          if (event.name === 'word' || event.name === 'sentence') {
-            currentCharIndex += event.charIndex + (event.name === 'word' ? event.charLength || 1 : 0);
+        newUtterance.onstart = () => { isPlaying = true; updateUI(); };
+        newUtterance.onend = () => { isPlaying = false; currentCharIndex = totalChars; updateProgress(); updateUI(); };
+        newUtterance.onboundary = (e) => {
+          if (e.name === 'word' || e.name === 'sentence') {
+            currentCharIndex += e.charIndex + (e.name === 'word' ? e.charLength || 1 : 0);
             updateProgress();
           }
         };
-
-        newUtterance.onerror = (event) => {
-          console.error('Error en reproducción:', event.error);
-          isPlaying = false;
-          updateUI();
-        };
-
+        newUtterance.onerror = () => { isPlaying = false; updateUI(); };
         return newUtterance;
       }
 
       function playSpeech() {
         stopSpeech();
-
-        utterance = createUtteranceFromPosition();
-        if (utterance) {
-          synthesis.speak(utterance);
-          isPlaying = true;
-          updateUI();
-        }
-      }
-
-      function pauseSpeech() {
-        if (isPlaying) {
-          stopSpeech();
-          isPlaying = false;
-          updateUI();
-        }
+        utterance = createUtterance();
+        if (utterance) { synthesis.speak(utterance); isPlaying = true; updateUI(); }
       }
 
       function togglePlayPause() {
-        if (isPlaying) {
-          pauseSpeech();
-        } else {
-          playSpeech();
-        }
+        if (isPlaying) { stopSpeech(); } else { playSpeech(); }
       }
 
       function updateUI() {
-        if (statusText) {
-          statusText.innerText = isPlaying ? (lang === 'es' ? 'Reproduciendo...' : 'Playing...') : (lang === 'es' ? 'Escuchar noticia' : 'Listen to article');
-        }
-        if (playIcon) {
-          playIcon.innerHTML = isPlaying ? 
-            String('<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>') : 
-            String('<path d="M8 5v14l11-7z"/>');
-        }
+        if (statusText) statusText.innerText = isPlaying ? (lang === 'es' ? 'Reproduciendo...' : 'Playing...') : (lang === 'es' ? 'Escuchar noticia' : 'Listen to article');
+        if (playIcon) playIcon.innerHTML = isPlaying ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
       }
 
       function updateProgress() {
         if (audioProgressBar && totalChars > 0) {
           const progress = (currentCharIndex / totalChars) * 100;
-          audioProgressBar.style.width = String(Math.min(progress, 100)) + '%';
+          audioProgressBar.style.width = Math.min(progress, 100) + '%';
         }
       }
 
-      voiceSelector.addEventListener('change', (e) => {
-        const voiceName = e.target.value;
-        const voices = synthesis.getVoices();
-        selectedVoice = voiceName ? voices.find(v => v.name === voiceName) : null;
-
-        if (isPlaying) {
-          const wasPlaying = true;
-          pauseSpeech();
-          if (wasPlaying) {
-            playSpeech();
-          }
-        }
-      });
-
-      if (rateControl) {
-        rateControl.addEventListener('input', function(e) {
-          rate = parseFloat(e.target.value) || 1;
-          
-          if (rateValue) {
-            rateValue.textContent = rate.toFixed(1) + 'x';
-          }
-
-          if (isPlaying) {
-            pauseSpeech();
-            playSpeech();
-          }
-        });
-      }
-
-      toggleAdvancedBtn.addEventListener('click', () => {
-        audioPlayer.classList.toggle('expanded');
-        toggleAdvancedBtn.classList.toggle('active');
-      });
-
-      if (synthesis) {
-        loadVoices().then(() => {
-          console.log('✅ Voces cargadas para:', voiceLang);
-        });
-      } else {
-        console.warn('Speech synthesis no soportado en este navegador');
-      }
-
-      playPauseBtn.addEventListener('click', async () => {
-        if (!synthesis) {
-          alert('Tu navegador no soporta texto a voz');
-          return;
-        }
-        
-        if (!voicesReady) {
-          if (statusText) statusText.innerText = lang === 'es' ? 'Cargando...' : 'Loading...';
-          await loadVoices();
-        }
-        
+      playPauseBtn.addEventListener('click', () => {
+        if (!synthesis) { alert(lang === 'es' ? 'Texto a voz no soportado en este navegador' : 'Text-to-speech not supported in this browser'); return; }
         togglePlayPause();
       });
 
@@ -1762,43 +1531,10 @@ function generateNewsHtmlTemplate({
 
       window.addEventListener('beforeunload', stopSpeech);
     });
-
-    // ========== FUNCIONES DE COMPARTIR ==========
-    function shareOnTwitter() {
-      try {
-        const url = encodeURIComponent(window.location.href);
-        let title = '';
-        const metaTitle = document.querySelector('meta[property="og:title"]') || document.querySelector('title');
-        if (metaTitle) {
-          title = metaTitle.content || metaTitle.textContent || '';
-        }
-        const text = encodeURIComponent(title.substring(0, 100));
-        window.open('https://twitter.com/intent/tweet?url=' + url + '&text=' + text, '_blank');
-      } catch (e) {
-        console.error('Error al compartir en Twitter:', e);
-      }
-    }
-
-    function shareOnFacebook() {
-      try {
-        const url = encodeURIComponent(window.location.href);
-        window.open('https://www.facebook.com/sharer/sharer.php?u=' + url, '_blank');
-      } catch (e) {
-        console.error('Error al compartir en Facebook:', e);
-      }
-    }
-
-    function shareOnLinkedIn() {
-      try {
-        const url = encodeURIComponent(window.location.href);
-        window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + url, '_blank');
-      } catch (e) {
-        console.error('Error al compartir en LinkedIn:', e);
-      }
-    }
   </script>
 </body>
 </html>`;
+};
 }
 
 // ========== GENERACIÓN DE ÍNDICES ==========
