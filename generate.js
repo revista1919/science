@@ -1,12 +1,5 @@
-const fs = require('fs');
-const path = require('path');
-const cheerio = require('cheerio');
-const crypto = require('crypto');
-const sharp = require('sharp');
-
-// ========== CONFIGURACIÓN ==========
-const NEWS_BASE_DIR = path.join(__dirname, 'science'); // Carpeta base
-const OUTPUT_HTML_DIR = path.join(__dirname, 'news'); // HTML generado
+const NEWS_BASE_DIR = __dirname; // La raíz del repositorio
+const OUTPUT_HTML_DIR = path.join(__dirname, 'news'); // HTML generado en /news
 const DOMAIN = 'https://www.revistacienciasestudiantes.com';
 const JOURNAL_NAME_ES = 'Revista Nacional de las Ciencias para Estudiantes';
 const JOURNAL_NAME_EN = 'The National Review of Sciences for Students';
@@ -22,6 +15,7 @@ const IMAGES_DIR = path.join(__dirname, 'images', 'news');
 if (!fs.existsSync(IMAGES_DIR)) {
   fs.mkdirSync(IMAGES_DIR, { recursive: true });
 }
+
 
 // ========== UTILIDADES ==========
 function generateSlug(text) {
@@ -196,14 +190,13 @@ function calculateReadingTime(html, wordsPerMinute = 200) {
   };
 }
 
-// ========== FUNCIÓN PRINCIPAL ==========
-// ========== FUNCIÓN PRINCIPAL ==========
+/// ========== FUNCIÓN PRINCIPAL ==========
 async function generateNews() {
   console.log('🚀 Iniciando generación de noticias científicas estáticas...');
-  console.log('📁 Directorio base:', NEWS_BASE_DIR);
+  console.log('📁 Directorio raíz:', __dirname);
   
   try {
-    // Leer el índice general - CORREGIDO: index.json está en la raíz
+    // Leer el índice general - index.json está en la RAÍZ
     const indexPath = path.join(__dirname, 'index.json');
     console.log('🔍 Buscando índice en:', indexPath);
     
@@ -221,7 +214,8 @@ async function generateNews() {
     
     for (const year of years) {
       const yearData = indexData.years[year];
-      const yearJsonPath = path.join(NEWS_BASE_DIR, year, yearData.json_file);
+      // Las carpetas de año están en la raíz: /2026/, /2025/, etc.
+      const yearJsonPath = path.join(__dirname, year, yearData.json_file);
       
       console.log(`🔍 Buscando noticias del año ${year} en: ${yearJsonPath}`);
       
@@ -241,9 +235,9 @@ async function generateNews() {
         console.warn(`⚠️ No se encontró ${yearJsonPath}`);
         // Intentar con rutas alternativas
         const alternativePaths = [
-          path.join(NEWS_BASE_DIR, year, `news-${year}.json`),
-          path.join(NEWS_BASE_DIR, year, 'news.json'),
-          path.join(__dirname, year, `news-${year}.json`)
+          path.join(__dirname, year, `news-${year}.json`),
+          path.join(__dirname, year, 'news.json'),
+          path.join(__dirname, 'data', year, `news-${year}.json`)
         ];
         
         for (const altPath of alternativePaths) {
