@@ -1,3 +1,11 @@
+// ========== IMPORTS ==========
+const fs = require('fs');
+const path = require('path');
+const cheerio = require('cheerio');
+const crypto = require('crypto');
+const sharp = require('sharp');
+
+// ========== CONFIGURACIÓN ==========
 const NEWS_BASE_DIR = __dirname; // La raíz del repositorio
 const OUTPUT_HTML_DIR = path.join(__dirname, 'news'); // HTML generado en /news
 const DOMAIN = 'https://www.revistacienciasestudiantes.com';
@@ -15,7 +23,6 @@ const IMAGES_DIR = path.join(__dirname, 'images', 'news');
 if (!fs.existsSync(IMAGES_DIR)) {
   fs.mkdirSync(IMAGES_DIR, { recursive: true });
 }
-
 
 // ========== UTILIDADES ==========
 function generateSlug(text) {
@@ -190,7 +197,7 @@ function calculateReadingTime(html, wordsPerMinute = 200) {
   };
 }
 
-/// ========== FUNCIÓN PRINCIPAL ==========
+// ========== FUNCIÓN PRINCIPAL ==========
 async function generateNews() {
   console.log('🚀 Iniciando generación de noticias científicas estáticas...');
   console.log('📁 Directorio raíz:', __dirname);
