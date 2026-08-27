@@ -197,26 +197,33 @@ function calculateReadingTime(html, wordsPerMinute = 200) {
 }
 
 // ========== FUNCIÓN PRINCIPAL ==========
+// ========== FUNCIÓN PRINCIPAL ==========
 async function generateNews() {
   console.log('🚀 Iniciando generación de noticias científicas estáticas...');
   console.log('📁 Directorio base:', NEWS_BASE_DIR);
   
   try {
-    // Leer el índice general
-    const indexPath = path.join(NEWS_BASE_DIR, 'index.json');
+    // Leer el índice general - CORREGIDO: index.json está en la raíz
+    const indexPath = path.join(__dirname, 'index.json');
+    console.log('🔍 Buscando índice en:', indexPath);
+    
     if (!fs.existsSync(indexPath)) {
       throw new Error(`No se encuentra ${indexPath}`);
     }
     
     const indexData = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-    console.log(`📊 Años encontrados: ${Object.keys(indexData.years || {}).length}`);
+    const years = Object.keys(indexData.years || {});
+    console.log(`📊 Años encontrados: ${years.length}`);
+    console.log(`📋 Años disponibles: ${years.join(', ')}`);
     
     // Leer todas las noticias de todos los años
     const allNews = [];
     
-    for (const year of Object.keys(indexData.years || {})) {
+    for (const year of years) {
       const yearData = indexData.years[year];
       const yearJsonPath = path.join(NEWS_BASE_DIR, year, yearData.json_file);
+      
+      console.log(`🔍 Buscando noticias del año ${year} en: ${yearJsonPath}`);
       
       if (fs.existsSync(yearJsonPath)) {
         const yearNewsData = JSON.parse(fs.readFileSync(yearJsonPath, 'utf8'));
@@ -232,10 +239,39 @@ async function generateNews() {
         console.log(`📄 Año ${year}: ${yearNews.length} noticias cargadas`);
       } else {
         console.warn(`⚠️ No se encontró ${yearJsonPath}`);
+        // Intentar con rutas alternativas
+        const alternativePaths = [
+          path.join(NEWS_BASE_DIR, year, `news-${year}.json`),
+          path.join(NEWS_BASE_DIR, year, 'news.json'),
+          path.join(__dirname, year, `news-${year}.json`)
+        ];
+        
+        for (const altPath of alternativePaths) {
+          if (fs.existsSync(altPath)) {
+            console.log(`✅ Encontrado en ruta alternativa: ${altPath}`);
+            const yearNewsData = JSON.parse(fs.readFileSync(altPath, 'utf8'));
+            const yearNews = yearNewsData.news || yearNewsData;
+            
+            yearNews.forEach(newsItem => {
+              allNews.push({
+                ...newsItem,
+                year: year
+              });
+            });
+            
+            console.log(`📄 Año ${year}: ${yearNews.length} noticias cargadas (ruta alternativa)`);
+            break;
+          }
+        }
       }
     }
     
     console.log(`📚 Total noticias: ${allNews.length}`);
+    
+    if (allNews.length === 0) {
+      console.warn('⚠️ No se encontraron noticias. Verifica la estructura de carpetas.');
+      return;
+    }
     
     // Ordenar por fecha descendente
     allNews.sort((a, b) => {
@@ -245,14 +281,17 @@ async function generateNews() {
     });
 
     // Generar HTML para cada noticia
+    console.log('📝 Generando HTML para cada noticia...');
     for (const newsItem of allNews) {
       await generateNewsHtml(newsItem);
     }
 
     // Generar índices
+    console.log('📊 Generando índices...');
     generateIndexes(allNews, indexData);
 
     console.log('🎉 ¡Proceso completado con éxito!');
+    console.log(`📁 Archivos HTML generados en: ${OUTPUT_HTML_DIR}`);
     
   } catch (err) {
     console.error('❌ Error:', err);
