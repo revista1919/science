@@ -1,0 +1,49 @@
+{
+  "year": 2026,
+  "total_news": 1,
+  "last_updated": "2026-08-27T20:27:12.960Z",
+  "news": [
+    {
+      "id": "news-1787862432960-8vd21e8yq",
+      "slug": "prueba-1787862432960",
+      "title": {
+        "es": "Prueba",
+        "en": "Test"
+      },
+      "content": {
+        "es": "\n        <div class=\"article\">\n          <p>Hola!</p><p>Esta es una <strong>prueba</strong></p>\n        </div>\n      ",
+        "en": "\n        <div class=\"article\">\n          <p><br></p>\n        </div>\n      "
+      },
+      "author": {
+        "name": "Javier Vergara",
+        "uid": "Wp9AbMocILX4UOy6il09qluhrL23",
+        "email": "javieritoalonso.vergara@gmail.com"
+      },
+      "area_id": "logros_estudiantiles",
+      "category": "premio",
+      "tags": [],
+      "photo": "https://www.revistacienciasestudiantes.com/assets/logo.png",
+      "featured": true,
+      "metadata": {
+        "createdAt": "2026-08-27T20:27:12.960Z",
+        "createdTimestamp": 1787862432960,
+        "updatedAt": "2026-08-27T20:27:12.960Z",
+        "updatedTimestamp": 1787862432960,
+        "publishedAt": "2026-08-27T20:27:12.960Z",
+        "publishedTimestamp": 1787862432960,
+        "status": "published",
+        "language": "bilingual",
+        "version": "1.0",
+        "wordCount": {
+          "es": 4,
+          "en": 0
+        }
+      },
+      "seo": {
+        "title": "Prueba",
+        "description": "\n        \n          Hola!Esta es una prueba\n        \n      ",
+        "keywords": "logros_estudiantiles"
+      }
+    }
+  ]
+}
