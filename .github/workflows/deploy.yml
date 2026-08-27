@@ -4,13 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'index.json'                # Índice en la raíz
-      - '**/*.json'                 # Cualquier JSON en carpetas de año (2026/, 2025/, etc.)
-      - 'generate.js'               # Generador
-      - 'package.json'              # Dependencias
-      - 'package-lock.json'         # Lock file (si existe)
-      - '.github/workflows/deploy.yml' # Este workflow
-  workflow_dispatch: # Permite ejecución manual
+      - 'index.json'
+      - '**/*.json'
+      - 'generate.js'
+      - 'package.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -32,48 +31,50 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: 'package-lock.json'
+          # QUITADO cache: 'npm' y cache-dependency-path
+          # Esto evita el error de caché
 
       - name: Install dependencies
         run: |
           echo "📦 Installing dependencies..."
-          if [ -f package-lock.json ]; then
-            echo "✅ package-lock.json found, using npm ci"
-            npm ci
-          else
-            echo "⚠️ No package-lock.json, using npm install"
-            npm install
-          fi
+          npm install --no-audit --no-fund
+          echo "✅ Dependencies installed"
 
       - name: Verify structure
         run: |
           echo "📁 Repository structure:"
           ls -la
           echo ""
-          echo "📄 index.json exists:"
-          test -f index.json && echo "✅ Yes" || echo "❌ No"
+          echo "📄 Checking index.json:"
+          if [ -f "index.json" ]; then
+            echo "✅ index.json found"
+            cat index.json | head -20
+          else
+            echo "❌ index.json NOT found"
+            exit 1
+          fi
           echo ""
-          echo "📂 Year folders:"
-          find . -maxdepth 2 -name "news-*.json" -o -name "*.json" | head -20
+          echo "📂 Checking year folders:"
+          find . -maxdepth 3 -name "*.json" -not -path "./node_modules/*" -not -name "package*.json" | head -20
 
       - name: Generate science news HTML
         run: |
           echo "🔄 Generating HTML..."
-          npm run generate
+          node generate.js
           echo "✅ Generation complete"
 
       - name: List generated files
         run: |
           echo "📁 Generated files:"
           if [ -d "news" ]; then
-            ls -la news/
+            echo "✅ news directory exists:"
+            ls -la news/ | head -20
           else
             echo "⚠️ No news directory found"
           fi
           echo ""
           if [ -d "images/news" ]; then
-            echo "🖼️ Images:"
+            echo "✅ images/news directory exists:"
             ls -la images/news/ | head -20
           fi
 
