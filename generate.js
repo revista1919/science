@@ -406,6 +406,20 @@ function generateNewsHtmlTemplate({
   const isSpanish = lang === 'es';
   const readingTime = calculateReadingTime(content);
   
+  // Extraer headings del contenido para el índice
+  const $ = cheerio.load(content);
+  const headings = [];
+  $('h1, h2, h3, h4').each((i, elem) => {
+    const id = `section-${i}`;
+    $(elem).attr('id', id);
+    headings.push({
+      id,
+      text: $(elem).text(),
+      level: elem.name
+    });
+  });
+  const contentWithIds = $.html();
+  
   const texts = {
     es: {
       backToNews: 'Volver a Noticias',
@@ -427,7 +441,18 @@ function generateNewsHtmlTemplate({
       privacy: 'Política de Privacidad',
       terms: 'Términos de Uso',
       contact: 'Contacto',
-      featured: 'Destacado'
+      featured: 'Destacado',
+      index: 'Índice del Artículo',
+      namePlaceholder: 'Tu nombre completo',
+      emailPlaceholder: 'correo@ejemplo.edu',
+      subscribing: 'Procesando...',
+      successTitle: '¡Gracias por suscribirte!',
+      successMessage: 'Recibirás noticias según tus preferencias',
+      alreadySubscribed: 'Este correo ya está suscrito a nuestro boletín',
+      invalidName: 'Por favor ingresa tu nombre',
+      invalidEmail: 'Por favor ingresa un correo válido',
+      generalError: 'Error al procesar la suscripción. Posiblemente usted ya está suscrito con este correo',
+      closeAudio: 'Cerrar reproductor'
     },
     en: {
       backToNews: 'Back to News',
@@ -449,13 +474,23 @@ function generateNewsHtmlTemplate({
       privacy: 'Privacy Policy',
       terms: 'Terms of Use',
       contact: 'Contact Us',
-      featured: 'Featured'
+      featured: 'Featured',
+      index: 'Article Index',
+      namePlaceholder: 'Your full name',
+      emailPlaceholder: 'email@example.edu',
+      subscribing: 'Processing...',
+      successTitle: 'Thank you for subscribing!',
+      successMessage: 'You will receive news according to your preferences',
+      alreadySubscribed: 'This email is already subscribed to our newsletter',
+      invalidName: 'Please enter your name',
+      invalidEmail: 'Please enter a valid email',
+      generalError: 'Error processing subscription. You are likely already subscribed with this email',
+      closeAudio: 'Close player'
     }
   };
 
   const t = texts[lang];
 
-  // SVG elegante para destacado
   const featuredSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle; margin-right: 4px;">
     <path fill="#f59e0b" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
   </svg>`;
@@ -486,6 +521,10 @@ function generateNewsHtmlTemplate({
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   
   <style>
     :root {
@@ -712,16 +751,16 @@ function generateNewsHtmlTemplate({
       align-items: center;
       gap: 6px;
       color: var(--open-access);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
     }
 
     .article-hero {
-      margin-bottom: 40px;
+      margin-bottom: 30px;
     }
     .article-hero img {
       width: 100%;
+      max-height: 400px;
       height: auto;
+      object-fit: cover;
       display: block;
       background: var(--bg-sidebar);
     }
@@ -729,7 +768,7 @@ function generateNewsHtmlTemplate({
       font-family: 'Inter', sans-serif;
       font-size: 0.8rem;
       color: var(--text-muted);
-      padding: 12px 0;
+      padding: 10px 0;
       line-height: 1.5;
       border-bottom: 1px solid var(--border-light);
     }
@@ -749,6 +788,9 @@ function generateNewsHtmlTemplate({
       padding-right: 8px;
       font-weight: 900;
       color: var(--nyt-black);
+    }
+    .article-body h1, .article-body h2, .article-body h3, .article-body h4 {
+      scroll-margin-top: 80px;
     }
     .article-body h2 {
       font-family: 'Merriweather', serif;
@@ -791,8 +833,9 @@ function generateNewsHtmlTemplate({
       margin-bottom: 0.75rem;
     }
 
+    /* Sidebar */
     .sidebar-section {
-      margin-bottom: 40px;
+      margin-bottom: 30px;
       border-top: 2px solid var(--nyt-black);
       padding-top: 15px;
     }
@@ -820,6 +863,8 @@ function generateNewsHtmlTemplate({
       border-radius: 2px;
       text-decoration: none;
     }
+    
+    /* Newsletter Box */
     .newsletter-box {
       background: var(--bg-sidebar);
       border: 1px solid var(--border-light);
@@ -845,6 +890,10 @@ function generateNewsHtmlTemplate({
       margin-bottom: 10px;
       outline: none;
       font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+    }
+    .newsletter-input:focus {
+      border-color: var(--nyt-black);
     }
     .newsletter-btn {
       width: 100%;
@@ -858,11 +907,88 @@ function generateNewsHtmlTemplate({
       text-transform: uppercase;
       letter-spacing: 0.05em;
       cursor: pointer;
+      transition: background 0.2s;
     }
     .newsletter-btn:hover {
       background: var(--accent-color);
     }
+    .newsletter-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .newsletter-error {
+      color: #dc2626;
+      font-size: 0.75rem;
+      font-family: 'Inter', sans-serif;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .newsletter-success {
+      text-align: center;
+      padding: 20px 0;
+    }
+    .newsletter-success .check-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #dcfce7;
+      color: #16a34a;
+      margin-bottom: 12px;
+    }
 
+    /* Table of Contents */
+    .toc-box {
+      position: sticky;
+      top: 80px;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+    .toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .toc-item {
+      margin-bottom: 4px;
+    }
+    .toc-link {
+      display: block;
+      padding: 6px 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all 0.2s;
+      line-height: 1.4;
+    }
+    .toc-link:hover {
+      color: var(--nyt-black);
+      background: var(--bg-sidebar);
+    }
+    .toc-link.active {
+      color: var(--nyt-black);
+      border-left-color: var(--accent-color);
+      background: #fef3c7;
+      font-weight: 600;
+    }
+    .toc-link.toc-h2 {
+      padding-left: 15px;
+      font-weight: 600;
+    }
+    .toc-link.toc-h3 {
+      padding-left: 25px;
+      font-size: 0.75rem;
+    }
+    .toc-link.toc-h4 {
+      padding-left: 35px;
+      font-size: 0.7rem;
+    }
+
+    /* Audio Player */
     .audio-player-editorial {
       position: fixed;
       bottom: 24px;
@@ -877,6 +1003,9 @@ function generateNewsHtmlTemplate({
       gap: 16px;
       font-family: 'Inter', sans-serif;
       border-radius: 4px;
+    }
+    .audio-player-editorial.hidden {
+      display: none;
     }
     .audio-controls {
       display: flex;
@@ -904,6 +1033,12 @@ function generateNewsHtmlTemplate({
       height: 14px;
       fill: currentColor;
     }
+    .audio-btn.close-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      color: var(--text-muted);
+    }
     .audio-info {
       display: flex;
       flex-direction: column;
@@ -928,6 +1063,7 @@ function generateNewsHtmlTemplate({
       transition: width 0.1s linear;
     }
 
+    /* Footer */
     .footer {
       border-top: 1px solid var(--border-light);
       background: #fff;
@@ -989,6 +1125,27 @@ function generateNewsHtmlTemplate({
     .footer-bottom-links a {
       color: var(--text-muted);
       text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+      .audio-player-editorial {
+        bottom: 15px;
+        right: 15px;
+        padding: 10px 12px;
+      }
+      .article-body {
+        font-size: 1rem;
+      }
+      .nav-minimal {
+        padding: 10px 15px;
+      }
+      .nav-logo-text {
+        display: none;
+      }
+      .toc-box {
+        position: static;
+        max-height: none;
+      }
     }
   </style>
 
@@ -1067,7 +1224,7 @@ function generateNewsHtmlTemplate({
               ⏱ ${readingTime.display} ${t.readingTime}
             </span>
             <span class="oa-badge" title="Open Access">
-              ${oaSvg} OA
+              ${oaSvg}
             </span>
           </div>
         </div>
@@ -1076,7 +1233,7 @@ function generateNewsHtmlTemplate({
       ${headerImageHtml}
 
       <div class="article-body" id="articleContent">
-        ${content}
+        ${contentWithIds}
       </div>
       
       <div class="sidebar-section" style="margin-top: 60px;">
@@ -1100,13 +1257,41 @@ function generateNewsHtmlTemplate({
       ` : ''}
 
       <div class="sidebar-section">
-        <div class="newsletter-box">
+        <div class="newsletter-box" id="newsletterBox">
           <h4>${t.newsletterTitle}</h4>
           <p>${t.newsletterText}</p>
-          <input type="email" class="newsletter-input" placeholder="${t.newsletterPlaceholder}">
-          <button class="newsletter-btn">${t.newsletterBtn}</button>
+          <div id="newsletterForm">
+            <input type="text" id="newsletterName" class="newsletter-input" placeholder="${t.namePlaceholder}" required>
+            <input type="email" id="newsletterEmail" class="newsletter-input" placeholder="${t.emailPlaceholder}" required>
+            <button id="newsletterSubmit" class="newsletter-btn">${t.newsletterBtn}</button>
+            <div id="newsletterError" class="newsletter-error" style="display:none;"></div>
+          </div>
+          <div id="newsletterSuccess" class="newsletter-success" style="display:none;">
+            <div class="check-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <p style="font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #16a34a; font-weight: 600;">${t.successTitle}</p>
+            <p style="font-family: 'Inter', sans-serif; font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">${t.successMessage}</p>
+          </div>
         </div>
       </div>
+
+      ${headings.length > 0 ? `
+      <div class="sidebar-section">
+        <div class="toc-box">
+          <h3 class="sidebar-title">${t.index}</h3>
+          <ul class="toc-list">
+            ${headings.map(h => `
+              <li class="toc-item">
+                <a href="#${h.id}" class="toc-link toc-${h.level}" data-target="${h.id}">${h.text}</a>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      </div>
+      ` : ''}
 
     </aside>
 
@@ -1127,6 +1312,9 @@ function generateNewsHtmlTemplate({
         <div class="audio-progress-bar" id="audioProgressBar"></div>
       </div>
     </div>
+    <button class="audio-btn close-btn" id="closeAudioBtn" title="${t.closeAudio}">
+      <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" fill="none"/></svg>
+    </button>
   </div>
 
   <footer class="footer">
@@ -1156,13 +1344,39 @@ function generateNewsHtmlTemplate({
   </footer>
 
   <script>
+    // ========== PROGRESS BAR ==========
     window.addEventListener('scroll', () => {
       const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
       const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
       const scrolled = (winScroll / height) * 100;
       document.getElementById('progressBar').style.width = scrolled + '%';
+      
+      // Highlight active TOC link
+      highlightToc();
     });
 
+    // ========== TABLE OF CONTENTS ==========
+    function highlightToc() {
+      const sections = document.querySelectorAll('.article-body h1[id], .article-body h2[id], .article-body h3[id], .article-body h4[id]');
+      const tocLinks = document.querySelectorAll('.toc-link');
+      
+      let currentSection = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop - 100;
+        if (window.scrollY >= sectionTop) {
+          currentSection = section.id;
+        }
+      });
+      
+      tocLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.dataset.target === currentSection) {
+          link.classList.add('active');
+        }
+      });
+    }
+
+    // ========== SHARING ==========
     function shareOnTwitter() {
       const url = encodeURIComponent(window.location.href);
       const text = encodeURIComponent(document.title);
@@ -1177,15 +1391,142 @@ function generateNewsHtmlTemplate({
       window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + url, '_blank');
     }
 
+    // ========== NEWSLETTER FIREBASE ==========
+    document.addEventListener('DOMContentLoaded', function() {
+      // Firebase config
+      const firebaseConfig = {
+        apiKey: "AIzaSyArr3LE_hQLZG0L5m9JND2OWVL8elnSyWk",
+        authDomain: "usuarios-rnce.firebaseapp.com",
+        projectId: "usuarios-rnce",
+        storageBucket: "usuarios-rnce.firebasestorage.app",
+        messagingSenderId: "688242139131",
+        appId: "1:688242139131:web:3a98663545e73110c3f55e",
+        measurementId: "G-K90MKB7BDP"
+      };
+      
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      
+      const CHECK_SUBSCRIPTION_URL = 'https://us-central1-usuarios-rnce.cloudfunctions.net/checkSubscription';
+      
+      const nameInput = document.getElementById('newsletterName');
+      const emailInput = document.getElementById('newsletterEmail');
+      const submitBtn = document.getElementById('newsletterSubmit');
+      const errorDiv = document.getElementById('newsletterError');
+      const formDiv = document.getElementById('newsletterForm');
+      const successDiv = document.getElementById('newsletterSuccess');
+      
+      if (!nameInput || !emailInput || !submitBtn) return;
+      
+      async function checkExistingSubscription(email) {
+        try {
+          const response = await fetch(CHECK_SUBSCRIPTION_URL + '?email=' + encodeURIComponent(email.toLowerCase()));
+          if (!response.ok) {
+            if (response.status === 404) return null;
+            throw new Error('HTTP ' + response.status);
+          }
+          const data = await response.json();
+          return data.subscription || null;
+        } catch (error) {
+          console.error('Error checking subscription:', error);
+          return null;
+        }
+      }
+      
+      submitBtn.addEventListener('click', async function() {
+        const nombre = nameInput.value.trim();
+        const correo = emailInput.value.trim();
+        
+        errorDiv.style.display = 'none';
+        
+        if (!nombre) {
+          errorDiv.textContent = '${t.invalidName}';
+          errorDiv.style.display = 'block';
+          return;
+        }
+        if (!correo || !correo.includes('@')) {
+          errorDiv.textContent = '${t.invalidEmail}';
+          errorDiv.style.display = 'block';
+          return;
+        }
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = '${t.subscribing}';
+        
+        try {
+          const existing = await checkExistingSubscription(correo);
+          
+          if (existing && existing.active) {
+            errorDiv.textContent = '${t.alreadySubscribed}';
+            errorDiv.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = '${t.newsletterBtn}';
+            return;
+          }
+          
+          const emailNormalizado = correo.toLowerCase().trim();
+          const emailId = emailNormalizado.replace(/[^a-z0-9]/g, '_');
+          
+          const subscriptionData = {
+            email: emailNormalizado,
+            nombre: nombre,
+            idioma: '${lang}',
+            active: true,
+            preferences: {
+              areas: ['biologia', 'quimica', 'fisica', 'matematica', 'computacion', 'astronomia', 'geologia', 'medicina', 'ingenieria', 'ciencias_sociales', 'medio_ambiente', 'neurociencia', 'logros_estudiantiles'],
+              frecuencia: 'inmediato',
+              idioma: '${lang}',
+              notificaciones: {
+                nuevas_publicaciones: true,
+                convocatorias: true,
+                eventos: true,
+                oportunidades: false,
+                logros_estudiantiles: true
+              }
+            },
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lastSentAt: null,
+            lastSentNews: [],
+            welcomeEmailSentAt: null,
+            welcomeEmailStatus: 'pending'
+          };
+          
+          await db.collection('newsletter').doc(emailId).set(subscriptionData);
+          
+          formDiv.style.display = 'none';
+          successDiv.style.display = 'block';
+          
+          setTimeout(() => {
+            formDiv.style.display = 'block';
+            successDiv.style.display = 'none';
+            nameInput.value = '';
+            emailInput.value = '';
+          }, 5000);
+          
+        } catch (error) {
+          console.error('Error subscribing:', error);
+          errorDiv.textContent = '${t.generalError}';
+          errorDiv.style.display = 'block';
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '${t.newsletterBtn}';
+        }
+      });
+    });
+
+    // ========== TEXT TO SPEECH ==========
     document.addEventListener('DOMContentLoaded', function() {
       const playPauseBtn = document.getElementById('playPauseBtn');
       const stopBtn = document.getElementById('stopBtn');
+      const closeAudioBtn = document.getElementById('closeAudioBtn');
       const statusText = document.getElementById('statusText');
       const playIcon = document.getElementById('playIcon');
       const audioProgressBar = document.getElementById('audioProgressBar');
       const articleContentEl = document.getElementById('articleContent');
+      const audioPlayer = document.getElementById('audioPlayer');
 
-      if (!playPauseBtn || !stopBtn || !statusText || !playIcon || !audioProgressBar || !articleContentEl) return;
+      if (!playPauseBtn || !stopBtn || !statusText || !playIcon || !audioProgressBar || !articleContentEl || !audioPlayer) return;
 
       let utterance = null;
       let isPlaying = false;
@@ -1254,6 +1595,11 @@ function generateNewsHtmlTemplate({
         currentCharIndex = 0;
         stopSpeech();
         updateProgress();
+      });
+      
+      closeAudioBtn.addEventListener('click', () => {
+        stopSpeech();
+        audioPlayer.classList.add('hidden');
       });
 
       window.addEventListener('beforeunload', stopSpeech);
