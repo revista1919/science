@@ -422,8 +422,6 @@ async function generateNewsHtml(item) {
   fs.writeFileSync(filePathEn, htmlContentEn, 'utf8');
   console.log(`  ✅ Inglés: ${slug}.EN.html`);
 }
-
-// ========== TEMPLATE MODIFICADO ==========
 function generateNewsHtmlTemplate({
   lang,
   title,
@@ -472,7 +470,8 @@ function generateNewsHtmlTemplate({
       publishedOn: 'Publicado el',
       views: 'vistas',
       citation: 'Citación sugerida',
-      moreFromAuthor: 'Más del autor'
+      moreFromAuthor: 'Más del autor',
+      featured: 'Destacado'
     },
     en: {
       backToNews: 'Back to News',
@@ -500,29 +499,32 @@ function generateNewsHtmlTemplate({
       publishedOn: 'Published on',
       views: 'views',
       citation: 'Suggested citation',
-      moreFromAuthor: 'More from this author'
+      moreFromAuthor: 'More from this author',
+      featured: 'Featured'
     }
   };
 
   const t = texts[lang];
 
-  const generateArticleHTML = ({
-  lang, title, tags, isSpanish, authorName, areaInfo, domain, slug,
-  fecha, journalName, logo, t, readingTime, headerImageHtml, content,
-  oaSvg, socialLinks, socialIcons, summary
-}) => {
-  return `<html lang="${lang}">
+  // SVG elegante para destacado
+  const featuredSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle; margin-right: 4px;">
+    <path fill="#f59e0b" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+    <path fill="#fbbf24" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" opacity="0.5"/>
+  </svg>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <meta name="description" content="${summary || title.substring(0, 160)}...">
+  <meta name="description" content="${title.substring(0, 160)}">
   <meta name="keywords" content="${tags.join(', ')}, ${isSpanish ? 'noticias, revista ciencias estudiantes, divulgación científica' : 'news, student science journal, scientific outreach'}">
   <meta name="author" content="${authorName}">
   <meta name="article:author" content="${authorName}">
   <meta name="article:section" content="${isSpanish ? areaInfo.es : areaInfo.en}">
   <meta name="article:tag" content="${tags.join(', ')}">
   <meta property="og:title" content="${title}">
-  <meta property="og:description" content="${summary || title.substring(0, 160)}...">
+  <meta property="og:description" content="${title.substring(0, 160)}">
   <meta property="og:url" content="${domain}/news/${slug}${isSpanish ? '' : '.EN'}.html">
   <meta property="og:type" content="article">
   <meta property="og:article:author" content="${authorName}">
@@ -540,7 +542,6 @@ function generateNewsHtmlTemplate({
   
   <style>
     :root {
-      /* Paleta Académica / Científica Premium */
       --nyt-black: #0f172a;
       --text-main: #111111;
       --text-body: #202020;
@@ -553,9 +554,6 @@ function generateNewsHtmlTemplate({
       --accent-color: #ea580c;
       --link-color: #0369a1;
       --open-access: #f97316;
-      --success-color: #059669;
-      --warning-color: #d97706;
-      --error-color: #dc2626;
     }
 
     * {
@@ -570,11 +568,10 @@ function generateNewsHtmlTemplate({
       background-color: var(--bg-site);
       line-height: 1.7;
       -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
       overflow-x: hidden;
     }
 
-    /* ========== PROGRESS BAR ========== */
+    /* Progress Bar */
     .progress-container {
       position: fixed;
       top: 0;
@@ -591,7 +588,7 @@ function generateNewsHtmlTemplate({
       transition: width 0.1s ease;
     }
 
-    /* ========== NAVEGACIÓN SUPERIOR ========== */
+    /* Navegación */
     .site-header {
       border-top: 4px solid var(--border-heavy);
       border-bottom: 1px solid var(--border-light);
@@ -646,7 +643,7 @@ function generateNewsHtmlTemplate({
       color: var(--nyt-black);
     }
 
-    /* ========== LAYOUT PRINCIPAL ========== */
+    /* Layout Principal */
     .layout-container {
       max-width: 1200px;
       margin: 40px auto;
@@ -662,7 +659,7 @@ function generateNewsHtmlTemplate({
       }
     }
 
-    /* ========== CABECERA DEL ARTÍCULO ========== */
+    /* Cabecera del Artículo */
     .article-header {
       margin-bottom: 30px;
     }
@@ -709,15 +706,6 @@ function generateNewsHtmlTemplate({
       color: var(--nyt-black);
       margin-bottom: 20px;
       letter-spacing: -0.01em;
-    }
-    .article-standfirst {
-      font-family: 'Inter', sans-serif;
-      font-size: 1.125rem;
-      line-height: 1.5;
-      font-weight: 600;
-      color: #334155;
-      margin-bottom: 30px;
-      max-width: 90%;
     }
     .article-author-line {
       font-family: 'Inter', sans-serif;
@@ -785,7 +773,7 @@ function generateNewsHtmlTemplate({
       letter-spacing: 0.05em;
     }
 
-    /* ========== IMAGEN PRINCIPAL ========== */
+    /* Imagen Principal */
     .article-hero {
       margin-bottom: 40px;
     }
@@ -807,7 +795,7 @@ function generateNewsHtmlTemplate({
       color: #94a3b8;
     }
 
-    /* ========== CUERPO DEL ARTÍCULO - CSS ROBUSTO ========== */
+    /* Cuerpo del Artículo */
     .article-body {
       font-size: 1.15rem;
     }
@@ -824,21 +812,12 @@ function generateNewsHtmlTemplate({
       font-weight: 900;
       color: var(--nyt-black);
     }
-    .article-body h1 {
-      font-family: 'Merriweather', serif;
-      font-size: 2.5rem;
-      font-weight: 900;
-      color: var(--nyt-black);
-      margin: 3rem 0 1.5rem 0;
-      line-height: 1.2;
-    }
     .article-body h2 {
       font-family: 'Merriweather', serif;
       font-size: 1.75rem;
       font-weight: 800;
       color: var(--nyt-black);
       margin: 2.5rem 0 1rem 0;
-      line-height: 1.3;
     }
     .article-body h3 {
       font-family: 'Merriweather', serif;
@@ -847,62 +826,19 @@ function generateNewsHtmlTemplate({
       color: var(--nyt-black);
       margin: 2rem 0 1rem 0;
     }
-    .article-body h4, .article-body h5, .article-body h6 {
-      font-family: 'Merriweather', serif;
-      font-weight: 700;
-      color: var(--nyt-black);
-      margin: 1.5rem 0 0.75rem 0;
-    }
     .article-body a {
       color: var(--link-color);
       text-decoration: underline;
       text-decoration-thickness: 1px;
       text-underline-offset: 3px;
     }
-    .article-body a:hover {
-      text-decoration-thickness: 2px;
-    }
     .article-body blockquote {
       margin: 2.5rem 0;
       padding: 0 0 0 1.5rem;
       border-left: 3px solid var(--nyt-black);
-      font-family: 'Merriweather', serif;
       font-style: italic;
       font-size: 1.25rem;
       color: #334155;
-    }
-    .article-body ul, .article-body ol {
-      margin: 1.5rem 0 1.5rem 1.5rem;
-      padding: 0;
-    }
-    .article-body li {
-      margin-bottom: 0.75rem;
-    }
-    .article-body table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 2.5rem 0;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.9rem;
-      overflow-x: auto;
-      display: block;
-    }
-    .article-body table th {
-      background: var(--nyt-black);
-      color: white;
-      padding: 12px 15px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 0.75rem;
-      text-align: left;
-    }
-    .article-body table td {
-      padding: 12px 15px;
-      border-bottom: 1px solid var(--border-light);
-    }
-    .article-body table tr:nth-child(even) {
-      background: var(--bg-sidebar);
     }
     .article-body img {
       max-width: 100%;
@@ -910,72 +846,14 @@ function generateNewsHtmlTemplate({
       display: block;
       margin: 2rem auto;
     }
-    .article-body video {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin: 2rem auto;
+    .article-body ul, .article-body ol {
+      margin: 1.5rem 0 1.5rem 1.5rem;
     }
-    .article-body iframe {
-      max-width: 100%;
-      margin: 2rem auto;
-      display: block;
-    }
-    .article-body code {
-      font-family: 'JetBrains Mono', monospace;
-      background: #f1f5f9;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 0.9em;
-    }
-    .article-body pre {
-      background: #1e293b;
-      color: #e2e8f0;
-      padding: 20px;
-      border-radius: 6px;
-      overflow-x: auto;
-      margin: 2rem 0;
-    }
-    .article-body pre code {
-      background: transparent;
-      color: inherit;
-      padding: 0;
-    }
-    .article-body .math-block {
-      overflow-x: auto;
-      padding: 1rem 0;
-      margin: 2rem 0;
-    }
-    .article-body .ql-editor img {
-      max-width: 100%;
-      height: auto;
-    }
-    .article-body .ql-editor iframe {
-      max-width: 100%;
-    }
-    .article-body .ql-editor .ql-video {
-      max-width: 100%;
-    }
-    .article-body figure {
-      margin: 2.5rem 0;
-    }
-    .article-body figure img {
-      margin: 0;
-    }
-    .article-body figcaption {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-top: 0.75rem;
-      text-align: center;
-    }
-    .article-body hr {
-      border: none;
-      border-top: 1px solid var(--border-light);
-      margin: 3rem 0;
+    .article-body li {
+      margin-bottom: 0.75rem;
     }
 
-    /* ========== BARRA LATERAL ========== */
+    /* Sidebar */
     .sidebar-section {
       margin-bottom: 40px;
       border-top: 2px solid var(--nyt-black);
@@ -1004,16 +882,11 @@ function generateNewsHtmlTemplate({
       padding: 6px 12px;
       border-radius: 2px;
       text-decoration: none;
-      transition: background 0.2s;
-    }
-    .subject-tag:hover {
-      background: #e0f2fe;
     }
     .newsletter-box {
       background: var(--bg-sidebar);
       border: 1px solid var(--border-light);
       padding: 24px;
-      text-align: left;
     }
     .newsletter-box h4 {
       font-family: 'Merriweather', serif;
@@ -1027,19 +900,13 @@ function generateNewsHtmlTemplate({
       font-size: 0.85rem;
       color: var(--text-muted);
       margin-bottom: 16px;
-      line-height: 1.5;
     }
     .newsletter-input {
       width: 100%;
       padding: 10px;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.85rem;
       border: 1px solid var(--border-dark);
       margin-bottom: 10px;
       outline: none;
-    }
-    .newsletter-input:focus {
-      border-color: var(--nyt-black);
     }
     .newsletter-btn {
       width: 100%;
@@ -1053,13 +920,12 @@ function generateNewsHtmlTemplate({
       text-transform: uppercase;
       letter-spacing: 0.05em;
       cursor: pointer;
-      transition: background 0.2s;
     }
     .newsletter-btn:hover {
       background: var(--accent-color);
     }
 
-    /* ========== REPRODUCTOR DE AUDIO ========== */
+    /* Reproductor de Audio */
     .audio-player-editorial {
       position: fixed;
       bottom: 24px;
@@ -1073,7 +939,6 @@ function generateNewsHtmlTemplate({
       align-items: center;
       gap: 16px;
       font-family: 'Inter', sans-serif;
-      transition: all 0.3s ease;
       border-radius: 4px;
     }
     .audio-controls {
@@ -1092,7 +957,6 @@ function generateNewsHtmlTemplate({
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
     }
     .audio-btn:hover {
       background: var(--bg-sidebar);
@@ -1119,7 +983,6 @@ function generateNewsHtmlTemplate({
       height: 2px;
       background: var(--border-light);
       margin-top: 6px;
-      position: relative;
     }
     .audio-progress-bar {
       height: 100%;
@@ -1128,7 +991,7 @@ function generateNewsHtmlTemplate({
       transition: width 0.1s linear;
     }
 
-    /* ========== FOOTER ========== */
+    /* Footer */
     .footer {
       border-top: 1px solid var(--border-light);
       background: #fff;
@@ -1145,12 +1008,6 @@ function generateNewsHtmlTemplate({
       border-bottom: 1px solid var(--border-light);
       padding-bottom: 40px;
       margin-bottom: 20px;
-    }
-    @media (max-width: 768px) {
-      .footer-container {
-        grid-template-columns: 1fr;
-        text-align: center;
-      }
     }
     .footer-brand {
       font-family: 'Merriweather', serif;
@@ -1171,10 +1028,6 @@ function generateNewsHtmlTemplate({
     }
     .footer-social a {
       color: var(--nyt-black);
-      transition: color 0.2s;
-    }
-    .footer-social a:hover {
-      color: var(--link-color);
     }
     .footer-bottom {
       display: flex;
@@ -1195,56 +1048,27 @@ function generateNewsHtmlTemplate({
       color: var(--text-muted);
       text-decoration: none;
     }
-    .footer-bottom-links a:hover {
-      text-decoration: underline;
-    }
-
-    /* ========== RESPONSIVE ========== */
-    @media (max-width: 768px) {
-      .audio-player-editorial {
-        bottom: 15px;
-        right: 15px;
-        padding: 10px 12px;
-      }
-      .article-body {
-        font-size: 1rem;
-      }
-      .nav-minimal {
-        padding: 10px 15px;
-      }
-      .nav-logo-text {
-        display: none;
-      }
-    }
   </style>
 
-  <!-- MathJax para renderizado de ecuaciones -->
+  <!-- MathJax -->
   <script>
     window.MathJax = {
       tex: {
         inlineMath: [['\\\\(', '\\\\)']],
         displayMath: [['\\\\[', '\\\\]']],
-        processEscapes: true,
-        processEnvironments: true
+        processEscapes: true
       },
-      options: {
-        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
-      },
-      svg: {
-        fontCache: 'global'
-      }
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] }
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
 </head>
 <body>
   
-  <!-- Barra de progreso superior -->
   <div class="progress-container">
     <div class="progress-bar" id="progressBar"></div>
   </div>
 
-  <!-- Navegación -->
   <header class="site-header">
     <nav class="nav-minimal">
       <a href="/" class="nav-logo">
@@ -1260,7 +1084,6 @@ function generateNewsHtmlTemplate({
 
   <main class="layout-container">
     
-    <!-- COLUMNA PRINCIPAL -->
     <article class="article-main">
       <header class="article-header">
         
@@ -1275,18 +1098,16 @@ function generateNewsHtmlTemplate({
         <div class="article-kicker">
           <span>${isSpanish ? 'NOTICIA' : 'NEWS'}</span>
           <span class="kicker-divider">|</span>
-          <time>${fecha}</time>
+          <time>${isSpanish ? formatLongDateEs(fecha) : formatLongDateEn(fecha)}</time>
         </div>
 
         <h1 class="article-title">${title}</h1>
         
-        ${summary ? `<div class="article-standfirst">${summary}</div>` : ''}
-
         <div class="article-author-line">
-          ${isSpanish ? 'Por' : 'By'} <a href="#">${authorName}</a>
+          ${isSpanish ? 'Por' : 'By'} <a href="${domain}/team/${authorSlug}.html">${authorName}</a>
+          ${featured ? ` • <span style="color: #f59e0b;">${featuredSvg} ${t.featured}</span>` : ''}
         </div>
 
-        <!-- Barra de Acciones / Meta -->
         <div class="article-actions">
           <div class="share-group">
             <button class="share-btn" onclick="shareOnTwitter()" title="Twitter">
@@ -1311,20 +1132,12 @@ function generateNewsHtmlTemplate({
         </div>
       </header>
 
-      <!-- Imagen Destacada -->
-      <figure class="article-hero">
-        ${headerImageHtml}
-        <figcaption>
-          ${isSpanish ? 'Fotografía representativa relacionada a la investigación.' : 'Representative photograph related to the research.'} <span class="credit">${isSpanish ? 'Crédito' : 'Credit'}: ${journalName}</span>
-        </figcaption>
-      </figure>
+      ${headerImageHtml}
 
-      <!-- Cuerpo del texto -->
       <div class="article-body" id="articleContent">
         ${content}
       </div>
       
-      <!-- Cita del Artículo -->
       <div class="sidebar-section" style="margin-top: 60px;">
         <h3 class="sidebar-title">${t.citation}</h3>
         <p style="font-family: 'Inter', sans-serif; font-size: 0.85rem; color: var(--text-muted);">
@@ -1334,19 +1147,17 @@ function generateNewsHtmlTemplate({
 
     </article>
 
-    <!-- COLUMNA LATERAL -->
     <aside class="article-sidebar">
       
       ${tags.length > 0 ? `
       <div class="sidebar-section">
-        <h3 class="sidebar-title">${isSpanish ? 'Materias' : 'Subjects'}</h3>
+        <h3 class="sidebar-title">${t.tags}</h3>
         <div class="subject-list">
           ${tags.map(tag => `<a href="#" class="subject-tag">${tag}</a>`).join('')}
         </div>
       </div>
       ` : ''}
 
-      <!-- Newsletter -->
       <div class="sidebar-section">
         <div class="newsletter-box">
           <h4>${isSpanish ? 'Suscríbete al Boletín' : 'Sign up to the Briefing'}</h4>
@@ -1356,26 +1167,10 @@ function generateNewsHtmlTemplate({
         </div>
       </div>
 
-      <!-- Artículos Relacionados -->
-      <div class="sidebar-section">
-        <h3 class="sidebar-title">${isSpanish ? 'Artículos Relacionados' : 'Related Articles'}</h3>
-        <div style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border-light); padding-bottom: 15px;">
-          <div style="flex: 1;">
-            <a href="#" style="font-family: 'Merriweather', serif; font-size: 0.9rem; font-weight: 700; color: var(--nyt-black); text-decoration: none; line-height: 1.3; display: block; margin-bottom: 6px;">
-              ${isSpanish ? 'Nuevos avances en la investigación científica estudiantil' : 'New breakthroughs in student scientific research'}
-            </a>
-            <span style="font-family: 'Inter', sans-serif; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">
-              News | ${new Date().getFullYear()}
-            </span>
-          </div>
-        </div>
-      </div>
-
     </aside>
 
   </main>
 
-  <!-- Reproductor de Audio -->
   <div class="audio-player-editorial" id="audioPlayer">
     <div class="audio-controls">
       <button class="audio-btn" id="playPauseBtn" title="${t.listen}">
@@ -1391,10 +1186,6 @@ function generateNewsHtmlTemplate({
         <div class="audio-progress-bar" id="audioProgressBar"></div>
       </div>
     </div>
-    
-    <select id="voiceSelector" style="display:none;"></select>
-    <input type="range" id="rateControl" style="display:none;" min="0.5" max="2" step="0.1" value="1">
-    <button id="toggleAdvancedBtn" style="display:none;"></button>
   </div>
 
   <footer class="footer">
@@ -1407,9 +1198,10 @@ function generateNewsHtmlTemplate({
       </div>
       <div style="display: flex; justify-content: flex-end; align-items: flex-start;">
         <div class="footer-social">
-          <a href="${socialLinks.instagram || '#'}" title="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></a>
-          <a href="${socialLinks.twitter || '#'}" title="X / Twitter"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-          <a href="${socialLinks.linkedin || '#'}" title="LinkedIn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></a>
+          <a href="${socialLinks.instagram || '#'}" title="Instagram">${socialIcons.instagram}</a>
+          <a href="${socialLinks.youtube || '#'}" title="YouTube">${socialIcons.youtube}</a>
+          <a href="${socialLinks.tiktok || '#'}" title="TikTok">${socialIcons.tiktok}</a>
+          <a href="${socialLinks.spotify || '#'}" title="Spotify">${socialIcons.spotify}</a>
         </div>
       </div>
     </div>
@@ -1425,20 +1217,17 @@ function generateNewsHtmlTemplate({
   </footer>
 
   <script>
-    // ========== PROGRESS BAR ==========
     window.addEventListener('scroll', () => {
       const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
       const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
       const scrolled = (winScroll / height) * 100;
-      const progressEl = document.getElementById('progressBar');
-      if(progressEl) progressEl.style.width = scrolled + '%';
+      document.getElementById('progressBar').style.width = scrolled + '%';
     });
 
-    // ========== SHARING ==========
     function shareOnTwitter() {
       const url = encodeURIComponent(window.location.href);
-      const title = encodeURIComponent(document.title);
-      window.open('https://twitter.com/intent/tweet?url=' + url + '&text=' + title, '_blank');
+      const text = encodeURIComponent(document.title);
+      window.open('https://twitter.com/intent/tweet?url=' + url + '&text=' + text, '_blank');
     }
     function shareOnFacebook() {
       const url = encodeURIComponent(window.location.href);
@@ -1449,7 +1238,6 @@ function generateNewsHtmlTemplate({
       window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + url, '_blank');
     }
 
-    // ========== TEXT TO SPEECH ==========
     document.addEventListener('DOMContentLoaded', function() {
       const playPauseBtn = document.getElementById('playPauseBtn');
       const stopBtn = document.getElementById('stopBtn');
@@ -1519,7 +1307,7 @@ function generateNewsHtmlTemplate({
       }
 
       playPauseBtn.addEventListener('click', () => {
-        if (!synthesis) { alert(lang === 'es' ? 'Texto a voz no soportado en este navegador' : 'Text-to-speech not supported in this browser'); return; }
+        if (!synthesis) { alert(lang === 'es' ? 'Texto a voz no soportado' : 'Text-to-speech not supported'); return; }
         togglePlayPause();
       });
 
@@ -1534,30 +1322,9 @@ function generateNewsHtmlTemplate({
   </script>
 </body>
 </html>`;
-};
-  return generateArticleHTML({
-    lang,
-    title,
-    tags,
-    isSpanish,
-    authorName,
-    areaInfo,
-    domain,
-    slug,
-    fecha,
-    journalName,
-    logo,
-    t,
-    readingTime,
-    headerImageHtml,
-    content,
-    oaSvg,
-    socialLinks,
-    socialIcons,
-    summary: content.replace(/<[^>]*>/g, '').substring(0, 200) // Extract summary from content
-  });
-}
 
+  return html;
+}
 // ========== GENERACIÓN DE ÍNDICES ==========
 function generateIndexes(newsItems, indexData) {
   console.log('📊 Generando índices...');
