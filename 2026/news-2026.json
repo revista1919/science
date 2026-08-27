@@ -1,0 +1,52 @@
+{
+  "year": 2026,
+  "total_news": 1,
+  "last_updated": "2026-08-27T20:50:13.187Z",
+  "news": [
+    {
+      "id": "news-1787863813187-ku4pp7khh",
+      "slug": "hola-prueba-1787863813187",
+      "title": {
+        "es": "Hola prueba",
+        "en": "Hola prueba"
+      },
+      "content": {
+        "es": "\n        <div class=\"article\">\n          <p>hOLA ESTA ES UNA <strong>PRUEBA</strong></p>\n        </div>\n      ",
+        "en": "\n        <div class=\"article\">\n          <p><br></p>\n        </div>\n      "
+      },
+      "author": {
+        "name": "Javier Vergara",
+        "uid": "Wp9AbMocILX4UOy6il09qluhrL23",
+        "email": "javieritoalonso.vergara@gmail.com"
+      },
+      "area_id": "logros_estudiantiles",
+      "category": "premio",
+      "tags": [
+        "hola",
+        "prueba"
+      ],
+      "photo": "https://www.revistacienciasestudiantes.com/assets/logo.png",
+      "featured": true,
+      "metadata": {
+        "createdAt": "2026-08-27T20:50:13.187Z",
+        "createdTimestamp": 1787863813187,
+        "updatedAt": "2026-08-27T20:50:13.187Z",
+        "updatedTimestamp": 1787863813187,
+        "publishedAt": "2026-08-27T20:50:13.187Z",
+        "publishedTimestamp": 1787863813187,
+        "status": "published",
+        "language": "bilingual",
+        "version": "1.0",
+        "wordCount": {
+          "es": 5,
+          "en": 0
+        }
+      },
+      "seo": {
+        "title": "Hola prueba",
+        "description": "\n        \n          hOLA ESTA ES UNA PRUEBA\n        \n      ",
+        "keywords": "hola, prueba, logros_estudiantiles"
+      }
+    }
+  ]
+}
