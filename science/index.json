@@ -1,0 +1,16 @@
+{
+  "repository": "science",
+  "description": "Sistema de noticias de divulgación científica",
+  "last_updated": "2026-08-27T20:27:12.960Z",
+  "years": {
+    "2026": {
+      "year": 2026,
+      "path": "science/2026",
+      "json_file": "news-2026.json",
+      "total_news": 1,
+      "last_updated": "2026-08-27T20:27:12.960Z",
+      "first_news_date": "2026-08-27T20:27:12.960Z",
+      "last_news_date": "2026-08-27T20:27:12.960Z"
+    }
+  }
+}
