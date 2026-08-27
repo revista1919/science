@@ -1535,6 +1535,27 @@ function generateNewsHtmlTemplate({
 </body>
 </html>`;
 };
+  return generateArticleHTML({
+    lang,
+    title,
+    tags,
+    isSpanish,
+    authorName,
+    areaInfo,
+    domain,
+    slug,
+    fecha,
+    journalName,
+    logo,
+    t,
+    readingTime,
+    headerImageHtml,
+    content,
+    oaSvg,
+    socialLinks,
+    socialIcons,
+    summary: content.replace(/<[^>]*>/g, '').substring(0, 200) // Extract summary from content
+  });
 }
 
 // ========== GENERACIÓN DE ÍNDICES ==========
