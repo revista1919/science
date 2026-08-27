@@ -6,8 +6,8 @@ const crypto = require('crypto');
 const sharp = require('sharp');
 
 // ========== CONFIGURACIÓN ==========
-const NEWS_BASE_DIR = __dirname; // La raíz del repositorio
-const OUTPUT_HTML_DIR = path.join(__dirname, 'news'); // HTML generado en /news
+const NEWS_BASE_DIR = __dirname;
+const OUTPUT_HTML_DIR = path.join(__dirname, 'news');
 const DOMAIN = 'https://www.revistacienciasestudiantes.com';
 const JOURNAL_NAME_ES = 'Revista Nacional de las Ciencias para Estudiantes';
 const JOURNAL_NAME_EN = 'The National Review of Sciences for Students';
@@ -101,6 +101,8 @@ function isBase64(str) {
 }
 
 async function processImages(html, slug, lang) {
+  if (!html) return '';
+  
   const $ = cheerio.load(html);
   const images = $('img');
   
@@ -125,16 +127,13 @@ async function processImages(html, slug, lang) {
       }
       
       $(img).attr('src', `/images/news/${slug}-${hash}-${lang}.webp`);
-    } else if (src && !src.startsWith('http')) {
-      if (src.startsWith('/')) {
-        $(img).attr('src', src);
-      } else {
-        $(img).attr('src', `/images/news/${src}`);
-      }
+    } else if (src && !src.startsWith('http') && !src.startsWith('/')) {
+      $(img).attr('src', `/images/news/${src}`);
     }
   }
   
-  return $.html();
+  // CORRECCIÓN: Extraer solo el contenido del body, no todo el HTML
+  return $('body').html() || $.html();
 }
 
 // ========== MAPEO DE ÁREAS ==========
@@ -203,7 +202,6 @@ async function generateNews() {
   console.log('📁 Directorio raíz:', __dirname);
   
   try {
-    // Leer el índice general - index.json está en la RAÍZ
     const indexPath = path.join(__dirname, 'index.json');
     console.log('🔍 Buscando índice en:', indexPath);
     
@@ -216,12 +214,10 @@ async function generateNews() {
     console.log(`📊 Años encontrados: ${years.length}`);
     console.log(`📋 Años disponibles: ${years.join(', ')}`);
     
-    // Leer todas las noticias de todos los años
     const allNews = [];
     
     for (const year of years) {
       const yearData = indexData.years[year];
-      // Las carpetas de año están en la raíz: /2026/, /2025/, etc.
       const yearJsonPath = path.join(__dirname, year, yearData.json_file);
       
       console.log(`🔍 Buscando noticias del año ${year} en: ${yearJsonPath}`);
@@ -240,7 +236,6 @@ async function generateNews() {
         console.log(`📄 Año ${year}: ${yearNews.length} noticias cargadas`);
       } else {
         console.warn(`⚠️ No se encontró ${yearJsonPath}`);
-        // Intentar con rutas alternativas
         const alternativePaths = [
           path.join(__dirname, year, `news-${year}.json`),
           path.join(__dirname, year, 'news.json'),
@@ -274,20 +269,17 @@ async function generateNews() {
       return;
     }
     
-    // Ordenar por fecha descendente
     allNews.sort((a, b) => {
       const dateA = new Date(a.metadata?.createdAt || a.fecha || 0);
       const dateB = new Date(b.metadata?.createdAt || b.fecha || 0);
       return dateB - dateA;
     });
 
-    // Generar HTML para cada noticia
     console.log('📝 Generando HTML para cada noticia...');
     for (const newsItem of allNews) {
       await generateNewsHtml(newsItem);
     }
 
-    // Generar índices
     console.log('📊 Generando índices...');
     generateIndexes(allNews, indexData);
 
@@ -301,7 +293,6 @@ async function generateNews() {
 }
 
 async function generateNewsHtml(item) {
-  // Obtener datos del item
   const titleEs = item.title?.es || item.titulo || '';
   const titleEn = item.title?.en || item.title || titleEs;
   const bodyEs = item.content?.es || item.cuerpo || '';
@@ -322,34 +313,16 @@ async function generateNewsHtml(item) {
   console.log(`   Autor: ${authorName} (${authorSlug})`);
   console.log(`   Área: ${areaInfo.es} | Categoría: ${categoryInfo.es}`);
 
-  // Procesar imágenes
   const processedBodyEs = await processImages(bodyEs, slug, 'es');
   const processedBodyEn = await processImages(bodyEn, slug, 'en');
 
   // ========== HTML ESPAÑOL ==========
   const headerImageHtmlEs = photoUrl
-    ? `<div class="hero-header" style="background-image: url('${photoUrl}')">
-         <div class="hero-overlay">
-           <div class="hero-content">
-             <span class="kicker">${areaInfo.es} • ${categoryInfo.es}</span>
-             <h1>${titleEs}</h1>
-             <div class="hero-meta">
-               <a href="${DOMAIN}/team/${authorSlug}.html" class="author-link">${authorName}</a> •
-               <span class="date">${formatLongDateEs(createdAt)}</span>
-               ${featured ? ' • <span class="featured-badge">⭐ Destacada</span>' : ''}
-             </div>
-           </div>
-         </div>
-       </div>`
-    : `<div class="standard-header">
-         <span class="kicker">${areaInfo.es} • ${categoryInfo.es}</span>
-         <h1>${titleEs}</h1>
-         <div class="hero-meta" style="color: #666">
-           <a href="${DOMAIN}/team/${authorSlug}.html" class="author-link" style="color: #004b87;">${authorName}</a> •
-           <span class="date">${formatLongDateEs(createdAt)}</span>
-           ${featured ? ' • <span class="featured-badge">⭐ Destacada</span>' : ''}
-         </div>
-       </div>`;
+    ? `<figure class="article-hero">
+         <img src="${photoUrl}" alt="${titleEs}" style="width: 100%; height: auto; display: block;">
+         <figcaption>${areaInfo.es} • ${categoryInfo.es}${featured ? ' • Destacada' : ''}</figcaption>
+       </figure>`
+    : '';
 
   const htmlContentEs = generateNewsHtmlTemplate({
     lang: 'es',
@@ -367,7 +340,9 @@ async function generateNewsHtml(item) {
     areaInfo,
     categoryInfo,
     tags,
-    featured
+    featured,
+    socialLinks,
+    socialIcons
   });
 
   const filePathEs = path.join(OUTPUT_HTML_DIR, `${slug}.html`);
@@ -376,28 +351,11 @@ async function generateNewsHtml(item) {
 
   // ========== HTML INGLÉS ==========
   const headerImageHtmlEn = photoUrl
-    ? `<div class="hero-header" style="background-image: url('${photoUrl}')">
-         <div class="hero-overlay">
-           <div class="hero-content">
-             <span class="kicker">${areaInfo.en} • ${categoryInfo.en}</span>
-             <h1>${titleEn}</h1>
-             <div class="hero-meta">
-               <a href="${DOMAIN}/team/${authorSlug}.html" class="author-link">${authorName}</a> •
-               <span class="date">${formatLongDateEn(createdAt)}</span>
-               ${featured ? ' • <span class="featured-badge">⭐ Featured</span>' : ''}
-             </div>
-           </div>
-         </div>
-       </div>`
-    : `<div class="standard-header">
-         <span class="kicker">${areaInfo.en} • ${categoryInfo.en}</span>
-         <h1>${titleEn}</h1>
-         <div class="hero-meta" style="color: #666">
-           <a href="${DOMAIN}/team/${authorSlug}.html" class="author-link" style="color: #004b87;">${authorName}</a> •
-           <span class="date">${formatLongDateEn(createdAt)}</span>
-           ${featured ? ' • <span class="featured-badge">⭐ Featured</span>' : ''}
-         </div>
-       </div>`;
+    ? `<figure class="article-hero">
+         <img src="${photoUrl}" alt="${titleEn}" style="width: 100%; height: auto; display: block;">
+         <figcaption>${areaInfo.en} • ${categoryInfo.en}${featured ? ' • Featured' : ''}</figcaption>
+       </figure>`
+    : '';
 
   const htmlContentEn = generateNewsHtmlTemplate({
     lang: 'en',
@@ -415,13 +373,16 @@ async function generateNewsHtml(item) {
     areaInfo,
     categoryInfo,
     tags,
-    featured
+    featured,
+    socialLinks,
+    socialIcons
   });
 
   const filePathEn = path.join(OUTPUT_HTML_DIR, `${slug}.EN.html`);
   fs.writeFileSync(filePathEn, htmlContentEn, 'utf8');
   console.log(`  ✅ Inglés: ${slug}.EN.html`);
 }
+
 function generateNewsHtmlTemplate({
   lang,
   title,
@@ -438,7 +399,9 @@ function generateNewsHtmlTemplate({
   areaInfo,
   categoryInfo,
   tags,
-  featured
+  featured,
+  socialLinks,
+  socialIcons
 }) {
   const isSpanish = lang === 'es';
   const readingTime = calculateReadingTime(content);
@@ -446,60 +409,46 @@ function generateNewsHtmlTemplate({
   const texts = {
     es: {
       backToNews: 'Volver a Noticias',
-      backToHome: 'Volver al inicio',
-      share: 'Compartir',
-      published: 'Publicado',
-      editorialStaff: 'Redacción Editorial',
-      license: 'Licencia',
-      licenseText: 'Este trabajo está bajo una licencia',
-      ccLicense: 'Creative Commons Atribución 4.0 Internacional',
-      excellence: 'Una revista por y para estudiantes',
+      submit: 'Envíos',
+      home: 'Home',
+      news: 'Noticias',
+      article: 'NOTICIA',
+      by: 'Por',
       readingTime: 'tiempo de lectura',
+      citation: 'Citación sugerida',
+      tags: 'Etiquetas',
+      newsletterTitle: 'Suscríbete al Boletín',
+      newsletterText: 'Un resumen esencial de noticias científicas, opinión y análisis, entregado en tu bandeja de entrada.',
+      newsletterPlaceholder: 'Tu correo electrónico',
+      newsletterBtn: 'Suscribirse',
       listen: 'Escuchar noticia',
       stop: 'Detener',
-      play: 'Reproducir',
-      pause: 'Pausa',
+      footerDesc: 'Publicación oficial dedicada a la divulgación e investigación científica desarrollada por estudiantes.',
+      privacy: 'Política de Privacidad',
+      terms: 'Términos de Uso',
       contact: 'Contacto',
-      followUs: 'Síguenos',
-      relatedNews: 'Noticias relacionadas',
-      tags: 'Etiquetas',
-      shareOn: 'Compartir en',
-      authorProfile: 'Ver perfil del autor',
-      area: 'Área',
-      category: 'Categoría',
-      publishedOn: 'Publicado el',
-      views: 'vistas',
-      citation: 'Citación sugerida',
-      moreFromAuthor: 'Más del autor',
       featured: 'Destacado'
     },
     en: {
       backToNews: 'Back to News',
-      backToHome: 'Back to home',
-      share: 'Share',
-      published: 'Published',
-      editorialStaff: 'Editorial Staff',
-      license: 'License',
-      licenseText: 'This work is licensed under a',
-      ccLicense: 'Creative Commons Attribution 4.0 International License',
-      excellence: 'A journal by and for students',
+      submit: 'Submit',
+      home: 'Home',
+      news: 'News',
+      article: 'NEWS',
+      by: 'By',
       readingTime: 'read time',
+      citation: 'Suggested citation',
+      tags: 'Tags',
+      newsletterTitle: 'Sign up to the Briefing',
+      newsletterText: 'An essential round-up of science news, opinion and analysis, delivered to your inbox.',
+      newsletterPlaceholder: 'Your email address',
+      newsletterBtn: 'Sign Up',
       listen: 'Listen to article',
       stop: 'Stop',
-      play: 'Play',
-      pause: 'Pause',
-      contact: 'Contact',
-      followUs: 'Follow us',
-      relatedNews: 'Related news',
-      tags: 'Tags',
-      shareOn: 'Share on',
-      authorProfile: 'View author profile',
-      area: 'Area',
-      category: 'Category',
-      publishedOn: 'Published on',
-      views: 'views',
-      citation: 'Suggested citation',
-      moreFromAuthor: 'More from this author',
+      footerDesc: 'Official publication dedicated to science outreach and research developed by students.',
+      privacy: 'Privacy Policy',
+      terms: 'Terms of Use',
+      contact: 'Contact Us',
       featured: 'Featured'
     }
   };
@@ -509,10 +458,9 @@ function generateNewsHtmlTemplate({
   // SVG elegante para destacado
   const featuredSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle; margin-right: 4px;">
     <path fill="#f59e0b" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-    <path fill="#fbbf24" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" opacity="0.5"/>
   </svg>`;
 
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
   <meta charset="UTF-8">
@@ -535,7 +483,6 @@ function generateNewsHtmlTemplate({
   <meta name="language" content="${lang}">
   <title>${title} - ${isSpanish ? 'Noticias' : 'News'} - ${journalName}</title>
   
-  <!-- Tipografía Editorial Premium -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -571,7 +518,6 @@ function generateNewsHtmlTemplate({
       overflow-x: hidden;
     }
 
-    /* Progress Bar */
     .progress-container {
       position: fixed;
       top: 0;
@@ -588,7 +534,6 @@ function generateNewsHtmlTemplate({
       transition: width 0.1s ease;
     }
 
-    /* Navegación */
     .site-header {
       border-top: 4px solid var(--border-heavy);
       border-bottom: 1px solid var(--border-light);
@@ -643,7 +588,6 @@ function generateNewsHtmlTemplate({
       color: var(--nyt-black);
     }
 
-    /* Layout Principal */
     .layout-container {
       max-width: 1200px;
       margin: 40px auto;
@@ -659,7 +603,6 @@ function generateNewsHtmlTemplate({
       }
     }
 
-    /* Cabecera del Artículo */
     .article-header {
       margin-bottom: 30px;
     }
@@ -773,7 +716,6 @@ function generateNewsHtmlTemplate({
       letter-spacing: 0.05em;
     }
 
-    /* Imagen Principal */
     .article-hero {
       margin-bottom: 40px;
     }
@@ -791,11 +733,7 @@ function generateNewsHtmlTemplate({
       line-height: 1.5;
       border-bottom: 1px solid var(--border-light);
     }
-    .article-hero .credit {
-      color: #94a3b8;
-    }
 
-    /* Cuerpo del Artículo */
     .article-body {
       font-size: 1.15rem;
     }
@@ -853,7 +791,6 @@ function generateNewsHtmlTemplate({
       margin-bottom: 0.75rem;
     }
 
-    /* Sidebar */
     .sidebar-section {
       margin-bottom: 40px;
       border-top: 2px solid var(--nyt-black);
@@ -907,6 +844,7 @@ function generateNewsHtmlTemplate({
       border: 1px solid var(--border-dark);
       margin-bottom: 10px;
       outline: none;
+      font-family: 'Inter', sans-serif;
     }
     .newsletter-btn {
       width: 100%;
@@ -925,7 +863,6 @@ function generateNewsHtmlTemplate({
       background: var(--accent-color);
     }
 
-    /* Reproductor de Audio */
     .audio-player-editorial {
       position: fixed;
       bottom: 24px;
@@ -991,7 +928,6 @@ function generateNewsHtmlTemplate({
       transition: width 0.1s linear;
     }
 
-    /* Footer */
     .footer {
       border-top: 1px solid var(--border-light);
       background: #fff;
@@ -1008,6 +944,12 @@ function generateNewsHtmlTemplate({
       border-bottom: 1px solid var(--border-light);
       padding-bottom: 40px;
       margin-bottom: 20px;
+    }
+    @media (max-width: 768px) {
+      .footer-container {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
     }
     .footer-brand {
       font-family: 'Merriweather', serif;
@@ -1050,7 +992,6 @@ function generateNewsHtmlTemplate({
     }
   </style>
 
-  <!-- MathJax -->
   <script>
     window.MathJax = {
       tex: {
@@ -1077,7 +1018,7 @@ function generateNewsHtmlTemplate({
       </a>
       <div class="nav-links">
         <a href="${isSpanish ? '/news' : '/news/index.EN.html'}" class="nav-link">${t.backToNews}</a>
-        <a href="${isSpanish ? '/submit' : '/en/submit'}" class="nav-link">${isSpanish ? 'Envíos' : 'Submit'}</a>
+        <a href="${isSpanish ? '/submit' : '/en/submit'}" class="nav-link">${t.submit}</a>
       </div>
     </nav>
   </header>
@@ -1088,15 +1029,15 @@ function generateNewsHtmlTemplate({
       <header class="article-header">
         
         <div class="article-breadcrumbs">
-          <a href="/">Home</a> 
+          <a href="/">${t.home}</a> 
           <span>›</span> 
-          <a href="${isSpanish ? '/news' : '/news/index.EN.html'}">${isSpanish ? 'Noticias' : 'News'}</a>
+          <a href="${isSpanish ? '/news' : '/news/index.EN.html'}">${t.news}</a>
           <span>›</span> 
           <span>${isSpanish ? areaInfo.es : areaInfo.en}</span>
         </div>
 
         <div class="article-kicker">
-          <span>${isSpanish ? 'NOTICIA' : 'NEWS'}</span>
+          <span>${t.article}</span>
           <span class="kicker-divider">|</span>
           <time>${isSpanish ? formatLongDateEs(fecha) : formatLongDateEn(fecha)}</time>
         </div>
@@ -1104,7 +1045,7 @@ function generateNewsHtmlTemplate({
         <h1 class="article-title">${title}</h1>
         
         <div class="article-author-line">
-          ${isSpanish ? 'Por' : 'By'} <a href="${domain}/team/${authorSlug}.html">${authorName}</a>
+          ${t.by} <a href="${domain}/team/${authorSlug}.html">${authorName}</a>
           ${featured ? ` • <span style="color: #f59e0b;">${featuredSvg} ${t.featured}</span>` : ''}
         </div>
 
@@ -1160,10 +1101,10 @@ function generateNewsHtmlTemplate({
 
       <div class="sidebar-section">
         <div class="newsletter-box">
-          <h4>${isSpanish ? 'Suscríbete al Boletín' : 'Sign up to the Briefing'}</h4>
-          <p>${isSpanish ? 'Un resumen esencial de noticias científicas, opinión y análisis, entregado en tu bandeja de entrada.' : 'An essential round-up of science news, opinion and analysis, delivered to your inbox.'}</p>
-          <input type="email" class="newsletter-input" placeholder="${isSpanish ? 'Tu correo electrónico' : 'Your email address'}">
-          <button class="newsletter-btn">${isSpanish ? 'Suscribirse' : 'Sign Up'}</button>
+          <h4>${t.newsletterTitle}</h4>
+          <p>${t.newsletterText}</p>
+          <input type="email" class="newsletter-input" placeholder="${t.newsletterPlaceholder}">
+          <button class="newsletter-btn">${t.newsletterBtn}</button>
         </div>
       </div>
 
@@ -1192,16 +1133,14 @@ function generateNewsHtmlTemplate({
     <div class="footer-container">
       <div>
         <div class="footer-brand">${journalName}</div>
-        <p class="footer-desc">
-          ${isSpanish ? 'Publicación oficial dedicada a la divulgación e investigación científica desarrollada por estudiantes.' : 'Official publication dedicated to science outreach and research developed by students.'}
-        </p>
+        <p class="footer-desc">${t.footerDesc}</p>
       </div>
       <div style="display: flex; justify-content: flex-end; align-items: flex-start;">
         <div class="footer-social">
-          <a href="${socialLinks.instagram || '#'}" title="Instagram">${socialIcons.instagram}</a>
-          <a href="${socialLinks.youtube || '#'}" title="YouTube">${socialIcons.youtube}</a>
-          <a href="${socialLinks.tiktok || '#'}" title="TikTok">${socialIcons.tiktok}</a>
-          <a href="${socialLinks.spotify || '#'}" title="Spotify">${socialIcons.spotify}</a>
+          <a href="${socialLinks.instagram}" title="Instagram">${socialIcons.instagram}</a>
+          <a href="${socialLinks.youtube}" title="YouTube">${socialIcons.youtube}</a>
+          <a href="${socialLinks.tiktok}" title="TikTok">${socialIcons.tiktok}</a>
+          <a href="${socialLinks.spotify}" title="Spotify">${socialIcons.spotify}</a>
         </div>
       </div>
     </div>
@@ -1209,9 +1148,9 @@ function generateNewsHtmlTemplate({
     <div class="footer-bottom">
       <div>© ${new Date().getFullYear()} ${journalName}. ISSN 3087-2839</div>
       <div class="footer-bottom-links">
-        <a href="/privacy${isSpanish ? '' : 'EN'}.html">${isSpanish ? 'Política de Privacidad' : 'Privacy Policy'}</a>
-        <a href="/terms${isSpanish ? '' : 'EN'}.html">${isSpanish ? 'Términos de Uso' : 'Terms of Use'}</a>
-        <a href="mailto:contact@revistacienciasestudiantes.com">${isSpanish ? 'Contacto' : 'Contact Us'}</a>
+        <a href="/privacy${isSpanish ? '' : 'EN'}.html">${t.privacy}</a>
+        <a href="/terms${isSpanish ? '' : 'EN'}.html">${t.terms}</a>
+        <a href="mailto:contact@revistacienciasestudiantes.com">${t.contact}</a>
       </div>
     </div>
   </footer>
@@ -1322,9 +1261,423 @@ function generateNewsHtmlTemplate({
   </script>
 </body>
 </html>`;
-
-  return html;
 }
+
+// ========== GENERACIÓN DE ÍNDICES ==========
+function generateIndexes(newsItems, indexData) {
+  console.log('📊 Generando índices...');
+  
+  const newsByYear = newsItems.reduce((acc, item) => {
+    const year = item.year || new Date(item.metadata?.createdAt || item.fecha || Date.now()).getFullYear();
+    if (!acc[year]) acc[year] = [];
+    acc[year].push(item);
+    return acc;
+  }, {});
+
+  const sortedYears = Object.keys(newsByYear).sort().reverse();
+
+  // Índice español
+  const indexContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Archivo de Noticias Científicas - ${JOURNAL_NAME_ES}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Lora:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #005a7d;
+      --text-main: #222222;
+      --text-light: #595959;
+      --border-color: #e5e7eb;
+      --bg-soft: #f8f9fa;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Lora', serif;
+      color: var(--text-main);
+      background-color: #f5f5f5;
+      line-height: 1.8;
+    }
+    .nav-minimal {
+      background: white;
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      font-family: 'Inter', sans-serif;
+    }
+    .nav-logo {
+      font-weight: 700;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      letter-spacing: 0.5px;
+    }
+    .main-wrapper {
+      max-width: 1000px;
+      margin: 3rem auto;
+      padding: 0 2rem;
+    }
+    .content-card {
+      background: white;
+      padding: 3rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 3rem;
+      margin: 0 0 1rem;
+      line-height: 1.2;
+      color: var(--primary);
+    }
+    .description {
+      color: var(--text-light);
+      margin-bottom: 3rem;
+      font-size: 1.1rem;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 1rem;
+    }
+    .year-section {
+      margin-bottom: 3rem;
+    }
+    .year-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 2rem;
+      color: var(--primary);
+      margin: 0 0 1.5rem;
+      border-left: 4px solid var(--primary);
+      padding-left: 1rem;
+    }
+    .news-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .news-item {
+      margin-bottom: 1.5rem;
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .news-item:hover {
+      background: var(--bg-soft);
+      transform: translateX(5px);
+      border-left: 4px solid var(--primary);
+    }
+    .news-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 1.3rem;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 0.5rem;
+      font-family: 'Playfair Display', serif;
+    }
+    .news-link:hover {
+      text-decoration: underline;
+    }
+    .news-meta {
+      color: var(--text-light);
+      font-size: 0.9rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-family: 'Inter', sans-serif;
+      align-items: center;
+    }
+    .author-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .author-link:hover {
+      text-decoration: underline;
+    }
+    .news-excerpt {
+      margin-top: 1rem;
+      color: var(--text-main);
+      font-size: 1rem;
+    }
+    footer {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-light);
+      font-size: 0.9rem;
+      background: white;
+      border-top: 1px solid var(--border-color);
+    }
+    @media (max-width: 768px) {
+      .main-wrapper { padding: 0 1rem; }
+      .content-card { padding: 1.5rem; }
+      h1 { font-size: 2.2rem; }
+      .year-title { font-size: 1.6rem; }
+      .news-link { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav-minimal">
+    <a href="/" class="nav-logo">${JOURNAL_NAME_ES.toUpperCase()}</a>
+    <div class="issn">ISSN: 3087-2839</div>
+  </nav>
+  <div class="main-wrapper">
+    <main class="content-card">
+      <h1>Archivo de Noticias Científicas</h1>
+      <p class="description">Todas las noticias de divulgación científica, ordenadas por año de publicación.</p>
+      
+      ${sortedYears.map(year => `
+      <section class="year-section">
+        <h2 class="year-title">${year}</h2>
+        <ul class="news-list">
+          ${newsByYear[year].map(item => {
+            const title = item.title?.es || item.titulo || '';
+            const authorName = item.author?.name || 'Redacción Editorial';
+            const authorSlug = generateAuthorSlug(authorName);
+            const slug = item.slug || generateSlug(`${title} ${item.metadata?.createdAt || item.fecha}`);
+            const body = item.content?.es || item.cuerpo || '';
+            const excerpt = body.replace(/<[^>]*>/g, '').substring(0, 150) + '...';
+            const areaId = item.area_id || 'general';
+            const areaInfo = AREAS_MAP[areaId] || { es: areaId, en: areaId };
+            const dateStr = item.metadata?.createdAt || item.fecha || new Date().toISOString();
+            
+            return `
+            <li class="news-item">
+              <a href="/news/${slug}.html" class="news-link">${title}</a>
+              <div class="news-meta">
+                <span class="date">${formatDateEs(dateStr)}</span>
+                <a href="${DOMAIN}/team/${authorSlug}.html" class="author-link">${authorName}</a>
+                <span class="area">${areaInfo.es}</span>
+              </div>
+              <div class="news-excerpt">${excerpt}</div>
+            </li>
+          `;
+          }).join('')}
+        </ul>
+      </section>
+      `).join('')}
+    </main>
+  </div>
+  <footer>
+    <p>&copy; ${new Date().getFullYear()} ${JOURNAL_NAME_ES}</p>
+    <p style="margin-top: 0.5rem;"><a href="/" style="color: var(--primary); text-decoration: none;">Volver al inicio</a></p>
+  </footer>
+</body>
+</html>`;
+
+  const indexPath = path.join(OUTPUT_HTML_DIR, 'index.html');
+  fs.writeFileSync(indexPath, indexContent, 'utf8');
+  console.log(`✅ Índice español: index.html`);
+
+  // Índice inglés
+  const indexContentEn = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scientific News Archive - ${JOURNAL_NAME_EN}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Lora:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #005a7d;
+      --text-main: #222222;
+      --text-light: #595959;
+      --border-color: #e5e7eb;
+      --bg-soft: #f8f9fa;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Lora', serif;
+      color: var(--text-main);
+      background-color: #f5f5f5;
+      line-height: 1.8;
+    }
+    .nav-minimal {
+      background: white;
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      font-family: 'Inter', sans-serif;
+    }
+    .nav-logo {
+      font-weight: 700;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      letter-spacing: 0.5px;
+    }
+    .main-wrapper {
+      max-width: 1000px;
+      margin: 3rem auto;
+      padding: 0 2rem;
+    }
+    .content-card {
+      background: white;
+      padding: 3rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 3rem;
+      margin: 0 0 1rem;
+      line-height: 1.2;
+      color: var(--primary);
+    }
+    .description {
+      color: var(--text-light);
+      margin-bottom: 3rem;
+      font-size: 1.1rem;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 1rem;
+    }
+    .year-section {
+      margin-bottom: 3rem;
+    }
+    .year-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 2rem;
+      color: var(--primary);
+      margin: 0 0 1.5rem;
+      border-left: 4px solid var(--primary);
+      padding-left: 1rem;
+    }
+    .news-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .news-item {
+      margin-bottom: 1.5rem;
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .news-item:hover {
+      background: var(--bg-soft);
+      transform: translateX(5px);
+      border-left: 4px solid var(--primary);
+    }
+    .news-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 1.3rem;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 0.5rem;
+      font-family: 'Playfair Display', serif;
+    }
+    .news-link:hover {
+      text-decoration: underline;
+    }
+    .news-meta {
+      color: var(--text-light);
+      font-size: 0.9rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-family: 'Inter', sans-serif;
+      align-items: center;
+    }
+    .author-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .author-link:hover {
+      text-decoration: underline;
+    }
+    .news-excerpt {
+      margin-top: 1rem;
+      color: var(--text-main);
+      font-size: 1rem;
+    }
+    footer {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-light);
+      font-size: 0.9rem;
+      background: white;
+      border-top: 1px solid var(--border-color);
+    }
+    @media (max-width: 768px) {
+      .main-wrapper { padding: 0 1rem; }
+      .content-card { padding: 1.5rem; }
+      h1 { font-size: 2.2rem; }
+      .year-title { font-size: 1.6rem; }
+      .news-link { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav-minimal">
+    <a href="/" class="nav-logo">${JOURNAL_NAME_EN.toUpperCase()}</a>
+    <div class="issn">ISSN: 3087-2839</div>
+  </nav>
+  <div class="main-wrapper">
+    <main class="content-card">
+      <h1>Scientific News Archive</h1>
+      <p class="description">All scientific outreach news, sorted by year of publication.</p>
+      
+      ${sortedYears.map(year => `
+      <section class="year-section">
+        <h2 class="year-title">${year}</h2>
+        <ul class="news-list">
+          ${newsByYear[year].map(item => {
+            const title = item.title?.en || item.title || '';
+            const authorName = item.author?.name || 'Editorial Staff';
+            const authorSlug = generateAuthorSlug(authorName);
+            const slug = item.slug || generateSlug(`${title} ${item.metadata?.createdAt || item.fecha}`);
+            const body = item.content?.en || item.content || '';
+            const excerpt = body.replace(/<[^>]*>/g, '').substring(0, 150) + '...';
+            const areaId = item.area_id || 'general';
+            const areaInfo = AREAS_MAP[areaId] || { es: areaId, en: areaId };
+            const dateStr = item.metadata?.createdAt || item.fecha || new Date().toISOString();
+            
+            return `
+            <li class="news-item">
+              <a href="/news/${slug}.EN.html" class="news-link">${title}</a>
+              <div class="news-meta">
+                <span class="date">${formatDateEn(dateStr)}</span>
+                <a href="${DOMAIN}/team/${authorSlug}.html" class="author-link">${authorName}</a>
+                <span class="area">${areaInfo.en}</span>
+              </div>
+              <div class="news-excerpt">${excerpt}</div>
+            </li>
+          `;
+          }).join('')}
+        </ul>
+      </section>
+      `).join('')}
+    </main>
+  </div>
+  <footer>
+    <p>&copy; ${new Date().getFullYear()} ${JOURNAL_NAME_EN}</p>
+    <p style="margin-top: 0.5rem;"><a href="/" style="color: var(--primary); text-decoration: none;">Back to home</a></p>
+  </footer>
+</body>
+</html>`;
+
+  const indexPathEn = path.join(OUTPUT_HTML_DIR, 'index.EN.html');
+  fs.writeFileSync(indexPathEn, indexContentEn, 'utf8');
+  console.log(`✅ Índice inglés: index.EN.html`);
+}
+
+
 // ========== GENERACIÓN DE ÍNDICES ==========
 function generateIndexes(newsItems, indexData) {
   console.log('📊 Generando índices...');
