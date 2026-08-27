@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'science/**/*.json'        # Archivos JSON de noticias científicas
+      - 'index.json'                # Índice en la raíz
+      - 'science/**/*.json'         # Archivos JSON de noticias científicas
       - 'generate.js'               # Generador
       - 'package.json'              # Dependencias
       - '.github/workflows/deploy.yml' # Este workflow
@@ -29,11 +30,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'  # ← CAMBIADO de '20' a '22'
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm install  # ← CAMBIADO de 'npm ci' a 'npm install'
 
       - name: Generate science news HTML
         run: npm run generate
