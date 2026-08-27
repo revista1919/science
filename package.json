@@ -1,0 +1,35 @@
+{
+  "name": "science-news-generator",
+  "version": "2.0.0",
+  "description": "Generador estático de noticias científicas para la Revista Nacional de Ciencias para Estudiantes",
+  "main": "generate.js",
+  "scripts": {
+    "generate": "node generate.js",
+    "build": "node generate.js",
+    "dev": "node generate.js && npx serve .",
+    "clean": "rm -rf news images/news"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "serve": "^14.2.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/revista1919/science.git"
+  },
+  "keywords": [
+    "science",
+    "news",
+    "generator",
+    "static-site",
+    "revista"
+  ],
+  "author": "Revista Nacional de Ciencias para Estudiantes",
+  "license": "MIT"
+}

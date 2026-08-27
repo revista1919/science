@@ -1,0 +1,64 @@
+name: Deploy Science News to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'science/**/*.json'        # Archivos JSON de noticias científicas
+      - 'generate.js'               # Generador
+      - 'package.json'              # Dependencias
+      - '.github/workflows/deploy.yml' # Este workflow
+  workflow_dispatch: # Permite ejecución manual
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Generate science news HTML
+        run: npm run generate
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+          retention-days: 30
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ Science news deployed successfully!"
+          echo "📊 URL: https://revista1919.github.io/science/"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Check logs for details"
