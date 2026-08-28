@@ -833,12 +833,23 @@ function generateNewsHtmlTemplate({
       margin-bottom: 0.75rem;
     }
 
-    /* Sidebar */
-    .sidebar-section {
-      margin-bottom: 30px;
-      border-top: 2px solid var(--nyt-black);
-      padding-top: 15px;
-    }
+/* Asegura que el sidebar completo use sticky */
+.article-sidebar {
+  position: sticky;
+  top: 100px;
+  align-self: start;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+}
+
+/* En móvil, desactivar el sticky */
+@media (max-width: 900px) {
+  .article-sidebar {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
     .sidebar-title {
       font-family: 'Inter', sans-serif;
       font-size: 0.85rem;
@@ -939,13 +950,32 @@ function generateNewsHtmlTemplate({
       margin-bottom: 12px;
     }
 
-    /* Table of Contents */
-    .toc-box {
-      position: sticky;
-      top: 80px;
-      max-height: calc(100vh - 120px);
-      overflow-y: auto;
-    }
+.toc-box {
+  position: sticky;
+  top: 100px;  /* Aumentado para que no choque con el header sticky */
+  max-height: calc(100vh - 140px);  /* Ajustado para dar más espacio */
+  overflow-y: auto;
+  scrollbar-width: thin;  /* Scrollbar más delgado en Firefox */
+  scrollbar-color: #cbd5e1 #f8fafc;  /* Colores del scrollbar */
+}
+
+/* Scrollbar personalizado para WebKit (Chrome, Safari, Edge) */
+.toc-box::-webkit-scrollbar {
+  width: 6px;
+}
+
+.toc-box::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.toc-box::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.toc-box::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
     .toc-list {
       list-style: none;
       padding: 0;
@@ -987,7 +1017,418 @@ function generateNewsHtmlTemplate({
       padding-left: 35px;
       font-size: 0.7rem;
     }
+/* ===================================================
+   CSS FINAL: CONTENIDO COMPLEJO EN ARTÍCULOS CIENTÍFICOS
+   Estilo Editorial / Nature / Elsevier High-End
+   Con manejo responsive completo para móvil y desktop
+   =================================================== */
 
+/* --- CONTENEDOR GENERAL --- */
+.article-body {
+  font-family: 'Lora', serif;
+  color: #222222;
+  font-size: 1.15rem;
+  line-height: 1.8;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+/* --- IMÁGENES RESPONSIVE Y PIES DE FOTO --- */
+.article-body img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 2.5rem auto;
+  border-radius: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Imágenes flotantes con estilo editorial */
+.article-body img[style*="float: left"],
+.article-body .float-left {
+  float: left;
+  margin: 1.5rem 2.5rem 1.5rem 0;
+  max-width: 45%;
+  clear: left;
+}
+
+.article-body img[style*="float: right"],
+.article-body .float-right {
+  float: right;
+  margin: 1.5rem 0 1.5rem 2.5rem;
+  max-width: 45%;
+  clear: right;
+}
+
+/* Limpieza de floats */
+.article-body .clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* En dispositivos móviles, las imágenes flotantes ocupan todo el ancho */
+@media (max-width: 768px) {
+  .article-body img[style*="float: left"],
+  .article-body img[style*="float: right"],
+  .article-body .float-left,
+  .article-body .float-right {
+    float: none !important;
+    max-width: 100% !important;
+    margin: 2rem auto !important;
+  }
+}
+
+/* --- TABLAS DE DATOS (ESTILO ELSEVIER / ACADÉMICO) --- */
+.article-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2.5rem 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  border-top: 2px solid #0f172a;
+  border-bottom: 2px solid #0f172a;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.article-body table thead {
+  background: #f8fafc;
+}
+
+.article-body table th {
+  font-weight: 700;
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid #0f172a;
+  color: #0f172a;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.article-body table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.article-body table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.article-body table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* Contenedor envolvente para tablas con scroll horizontal seguro */
+.article-body .table-wrapper {
+  overflow-x: auto;
+  margin: 2.5rem 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.article-body .table-wrapper table {
+  margin: 0;
+  border: none;
+  display: table;
+  min-width: 650px;
+}
+
+@media (max-width: 768px) {
+  .article-body table {
+    font-size: 0.8rem;
+  }
+  .article-body table th,
+  .article-body table td {
+    padding: 10px 12px;
+  }
+}
+
+/* --- TIPOGRAFÍA DE LISTAS --- */
+.article-body ul,
+.article-body ol {
+  margin: 1.75rem 0;
+  padding-left: 1.75rem;
+}
+
+/* Listas anidadas con indentación progresiva */
+.article-body ul ul,
+.article-body ol ol,
+.article-body ul ol,
+.article-body ol ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.article-body li {
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.article-body li > ul,
+.article-body li > ol {
+  margin-top: 0.5rem;
+}
+
+/* Listas de verificación personalizadas sin emojis */
+.article-body ul[data-checked="true"],
+.article-body ul[data-checked="false"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.article-body ul[data-checked="true"] li,
+.article-body ul[data-checked="false"] li {
+  padding-left: 2rem;
+  position: relative;
+}
+
+.article-body ul[data-checked="true"] li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #16a34a;
+  font-weight: 800;
+  font-family: 'Inter', sans-serif;
+}
+
+.article-body ul[data-checked="false"] li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: #64748b;
+  font-weight: 800;
+}
+
+/* --- FÓRMULAS MATEMÁTICAS (MATHJAX) --- */
+.article-body .ql-formula,
+.article-body .MathJax {
+  display: inline-block;
+  margin: 0 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding: 4px 0;
+  color: #0f172a;
+}
+
+/* Fórmulas en modo display */
+.article-body .MathJax_Display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding: 1.25rem 0;
+  margin: 2rem 0;
+  background: #fafaf9;
+  border-left: 3px solid #0f172a;
+  border-radius: 0 4px 4px 0;
+}
+
+@media (max-width: 768px) {
+  .article-body .ql-formula,
+  .article-body .MathJax {
+    font-size: 0.9rem;
+  }
+}
+
+/* --- BLOQUES DE CÓDIGO TIPO TERMINAL ACADÉMICA --- */
+.article-body pre {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 1.75rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  margin: 2rem 0;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  -webkit-overflow-scrolling: touch;
+}
+
+.article-body code {
+  font-family: 'JetBrains Mono', monospace;
+  background: #f1f5f9;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+}
+
+.article-body pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  border: none;
+}
+
+/* --- CITAS TEXTUALES (BLOCKQUOTES) --- */
+.article-body blockquote {
+  margin: 2.5rem 0;
+  padding: 1.25rem 2rem;
+  border-left: 4px solid #0f172a;
+  background: #f8fafc;
+  font-family: 'Merriweather', serif;
+  font-style: italic;
+  font-size: 1.2rem;
+  color: #334155;
+  border-radius: 0 4px 4px 0;
+}
+
+.article-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- ENCABEZADOS INTERNOS --- */
+.article-body h1[id],
+.article-body h2[id],
+.article-body h3[id],
+.article-body h4[id] {
+  scroll-margin-top: 100px;
+  font-family: 'Merriweather', serif;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.article-body h2 {
+  font-size: 1.85rem;
+  margin-top: 3rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+
+.article-body h3 {
+  font-size: 1.4rem;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+/* --- ENLACES INTERNOS --- */
+.article-body a {
+  color: #0369a1;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: color 0.2s;
+}
+
+.article-body a:hover {
+  color: #0f172a;
+  text-decoration-thickness: 2px;
+}
+
+/* --- VIDEOS Y RECURSOS MULTIMEDIA --- */
+.article-body video,
+.article-body iframe {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  margin: 2.5rem auto;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
+}
+
+/* --- ELEMENTOS COLAPSABLES (DETAILS / SUMMARY) --- */
+.article-body details {
+  margin: 2rem 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 1.25rem;
+  background: #fff;
+}
+
+.article-body summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #0f172a;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  padding: 0.25rem;
+}
+
+.article-body details[open] summary {
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+}
+
+/* --- SEPARADORES --- */
+.article-body hr {
+  border: none;
+  border-top: 1px solid #cbd5e1;
+  margin: 3.5rem auto;
+  width: 40%;
+}
+
+/* --- BADGES EDITORIALES --- */
+.article-body .badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 4px;
+  vertical-align: middle;
+}
+
+.article-body .badge-primary { background: #e0f2fe; color: #0369a1; }
+.article-body .badge-success { background: #dcfce7; color: #166534; }
+.article-body .badge-warning { background: #fef3c7; color: #92400e; }
+.article-body .badge-danger  { background: #fee2e2; color: #991b1b; }
+
+/* --- ACCESIBILIDAD Y MOVIMIENTO --- */
+.article-body :focus-visible {
+  outline: 2px solid #ea580c;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .article-body * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* --- MEDIA QUERIES ADICIONALES --- */
+@media (max-width: 640px) {
+  .article-body {
+    font-size: 0.95rem;
+  }
+  
+  .article-body h2 {
+    font-size: 1.5rem;
+  }
+  
+  .article-body h3 {
+    font-size: 1.2rem;
+  }
+  
+  .article-body blockquote {
+    padding: 1rem;
+    font-size: 1.1rem;
+  }
+  
+  .article-body pre {
+    padding: 1rem;
+    font-size: 0.8rem;
+  }
+}
     /* Audio Player */
     .audio-player-editorial {
       position: fixed;
