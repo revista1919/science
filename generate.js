@@ -384,57 +384,75 @@ async function generateNewsHtml(item) {
 }
 
 function generateNewsHtmlTemplate({
-  lang, title, content, fecha, slug, photo, domain, oaSvg, journalName, logo, authorName
+  lang,
+  title,
+  content,
+  fecha,
+  slug,
+  headerImageHtml,
+  domain,
+  oaSvg,
+  journalName,
+  logo,
+  authorName,
+  authorSlug,
+  areaInfo,
+  categoryInfo,
+  tags,
+  featured,
+  socialLinks,
+  socialIcons
 }) {
   const isSpanish = lang === 'es';
   const readingTime = calculateReadingTime(content);
   
-  // Extraer headings para TOC
-  const $ = cheerio.load(content || '');
+  // Extraer headings del contenido para el índice
+  const $ = cheerio.load(content);
   const headings = [];
   $('h1, h2, h3, h4').each((i, elem) => {
     const id = `section-${i}`;
     $(elem).attr('id', id);
     headings.push({
       id,
-      text: $(elem).text().trim(),
+      text: $(elem).text(),
       level: elem.name
     });
   });
   const contentWithIds = $.html();
-
+  
   const texts = {
     es: {
       backToNews: 'Volver a Noticias',
       submit: 'Envíos',
-      home: 'Inicio',
+      home: 'Home',
       news: 'Noticias',
       article: 'NOTICIA',
       by: 'Por',
-      readingTime: 'de lectura',
+      readingTime: 'tiempo de lectura',
       citation: 'Citación sugerida',
       tags: 'Etiquetas',
-      index: 'Índice del artículo',
-      listen: 'Escuchar noticia',
-      stop: 'Detener',
-      closeAudio: 'Cerrar',
-      footerDesc: 'Publicación oficial dedicada a la divulgación e investigación científica desarrollada por estudiantes.',
-      privacy: 'Privacidad',
-      terms: 'Términos',
-      contact: 'Contacto',
-      openAccess: 'Acceso Abierto',
       newsletterTitle: 'Suscríbete al Boletín',
       newsletterText: 'Un resumen esencial de noticias científicas, opinión y análisis, entregado en tu bandeja de entrada.',
+      newsletterPlaceholder: 'Tu correo electrónico',
+      newsletterBtn: 'Suscribirse',
+      listen: 'Escuchar noticia',
+      stop: 'Detener',
+      footerDesc: 'Publicación oficial dedicada a la divulgación e investigación científica desarrollada por estudiantes.',
+      privacy: 'Política de Privacidad',
+      terms: 'Términos de Uso',
+      contact: 'Contacto',
+      featured: 'Destacado',
+      index: 'Índice del Artículo',
       namePlaceholder: 'Tu nombre completo',
       emailPlaceholder: 'correo@ejemplo.edu',
-      newsletterBtn: 'Suscribirse',
       subscribing: 'Procesando...',
       successTitle: '¡Gracias por suscribirte!',
       successMessage: 'Recibirás noticias según tus preferencias',
       alreadySubscribed: 'Este correo ya está suscrito a nuestro boletín',
       invalidName: 'Por favor ingresa tu nombre',
       invalidEmail: 'Por favor ingresa un correo válido',
-      generalError: 'Error al procesar la suscripción. Posiblemente ya estás suscrito con este correo'
+      generalError: 'Error al procesar la suscripción. Posiblemente usted ya está suscrito con este correo',
+      closeAudio: 'Cerrar reproductor'
     },
     en: {
       backToNews: 'Back to News',
@@ -443,62 +461,39 @@ function generateNewsHtmlTemplate({
       news: 'News',
       article: 'NEWS',
       by: 'By',
-      readingTime: 'read',
+      readingTime: 'read time',
       citation: 'Suggested citation',
       tags: 'Tags',
-      index: 'Article Index',
-      listen: 'Listen to article',
-      stop: 'Stop',
-      closeAudio: 'Close',
-      footerDesc: 'Official publication dedicated to science outreach and research developed by students.',
-      privacy: 'Privacy',
-      terms: 'Terms',
-      contact: 'Contact',
-      openAccess: 'Open Access',
       newsletterTitle: 'Sign up to the Briefing',
       newsletterText: 'An essential round-up of science news, opinion and analysis, delivered to your inbox.',
+      newsletterPlaceholder: 'Your email address',
+      newsletterBtn: 'Sign Up',
+      listen: 'Listen to article',
+      stop: 'Stop',
+      footerDesc: 'Official publication dedicated to science outreach and research developed by students.',
+      privacy: 'Privacy Policy',
+      terms: 'Terms of Use',
+      contact: 'Contact Us',
+      featured: 'Featured',
+      index: 'Article Index',
       namePlaceholder: 'Your full name',
       emailPlaceholder: 'email@example.edu',
-      newsletterBtn: 'Sign Up',
       subscribing: 'Processing...',
       successTitle: 'Thank you for subscribing!',
       successMessage: 'You will receive news according to your preferences',
       alreadySubscribed: 'This email is already subscribed to our newsletter',
       invalidName: 'Please enter your name',
       invalidEmail: 'Please enter a valid email',
-      generalError: 'Error processing subscription. You are likely already subscribed with this email'
+      generalError: 'Error processing subscription. You are likely already subscribed with this email',
+      closeAudio: 'Close player'
     }
   };
+
   const t = texts[lang];
 
-  // Header: Hero o Standard
-  const headerHtml = photo
-    ? `<div class="hero-header" style="background-image: url('${photo}')">
-         <div class="hero-overlay">
-           <div class="hero-content">
-             <div class="kicker">${t.article}</div>
-             <h1>${title}</h1>
-             <div class="hero-meta">
-               <span>${t.by} ${authorName}</span>
-               <span class="dot">•</span>
-               <time>${isSpanish ? formatLongDateEs(fecha) : formatLongDateEn(fecha)}</time>
-               <span class="dot">•</span>
-               <span class="reading-badge">⏱ ${readingTime.display} ${t.readingTime}</span>
-             </div>
-           </div>
-         </div>
-       </div>`
-    : `<div class="standard-header">
-         <div class="kicker">${t.article}</div>
-         <h1>${title}</h1>
-         <div class="hero-meta">
-           <span>${t.by} ${authorName}</span>
-           <span class="dot">•</span>
-           <time>${isSpanish ? formatLongDateEs(fecha) : formatLongDateEn(fecha)}</time>
-           <span class="dot">•</span>
-           <span class="reading-badge">⏱ ${readingTime.display} ${t.readingTime}</span>
-         </div>
-       </div>`;
+  const featuredSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle; margin-right: 4px;">
+    <path fill="#f59e0b" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </svg>`;
 
   return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -506,657 +501,1133 @@ function generateNewsHtmlTemplate({
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <meta name="description" content="${title.substring(0, 160)}">
+  <meta name="keywords" content="${tags.join(', ')}, ${isSpanish ? 'noticias, revista ciencias estudiantes, divulgación científica' : 'news, student science journal, scientific outreach'}">
   <meta name="author" content="${authorName}">
+  <meta name="article:author" content="${authorName}">
+  <meta name="article:section" content="${isSpanish ? areaInfo.es : areaInfo.en}">
+  <meta name="article:tag" content="${tags.join(', ')}">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${title.substring(0, 160)}">
   <meta property="og:url" content="${domain}/news/${slug}${isSpanish ? '' : '.EN'}.html">
   <meta property="og:type" content="article">
+  <meta property="og:article:author" content="${authorName}">
+  <meta property="og:article:section" content="${isSpanish ? areaInfo.es : areaInfo.en}">
+  <meta property="og:article:tag" content="${tags.join(', ')}">
   <meta property="article:published_time" content="${fecha}">
   <meta name="twitter:card" content="summary_large_image">
-  <title>${title} — ${journalName}</title>
-
+  <meta name="language" content="${lang}">
+  <title>${title} - ${isSpanish ? 'Noticias' : 'News'} - ${journalName}</title>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-  <!-- Firebase (newsletter) -->
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
+  
   <style>
     :root {
       --nyt-black: #0f172a;
       --text-main: #111111;
-      --text-body: #1e293b;
+      --text-body: #202020;
       --text-muted: #64748b;
       --border-light: #e2e8f0;
       --border-dark: #cbd5e1;
-      --bg-site: #fafafa;
+      --border-heavy: #0f172a;
+      --bg-site: #fcfcfc;
       --bg-sidebar: #f8fafc;
-      --accent: #ea580c;
-      --accent-soft: #fff7ed;
-      --link: #0369a1;
+      --accent-color: #ea580c;
+      --link-color: #0369a1;
       --open-access: #f97316;
-      --primary: #0f172a;
-      --success: #16a34a;
-      --error: #dc2626;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      font-family: 'Lora', Georgia, serif;
+      font-family: 'Lora', serif;
       color: var(--text-body);
-      background: var(--bg-site);
-      line-height: 1.75;
+      background-color: var(--bg-site);
+      line-height: 1.7;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
     }
 
-    /* ========== PROGRESS BAR ========== */
     .progress-container {
-      position: fixed; top: 0; left: 0; width: 100%; height: 3px;
-      background: transparent; z-index: 1002;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: transparent;
+      z-index: 1001;
     }
     .progress-bar {
       height: 3px;
-      background: linear-gradient(90deg, var(--accent), #f59e0b);
-      width: 0%; 
-      transition: width 0.12s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 0 12px rgba(234, 88, 12, 0.35);
+      background: linear-gradient(90deg, var(--accent-color), #f59e0b);
+      width: 0%;
+      transition: width 0.1s ease;
     }
 
-    /* ========== NAV ========== */
     .site-header {
-      border-top: 4px solid var(--nyt-black);
+      border-top: 4px solid var(--border-heavy);
       border-bottom: 1px solid var(--border-light);
-      background: rgba(255,255,255,0.97);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      position: sticky; top: 0; z-index: 100;
-      transition: box-shadow 0.3s ease;
-    }
-    .site-header.scrolled {
-      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
     .nav-minimal {
-      max-width: 1200px; margin: 0 auto;
-      padding: 12px 24px;
-      display: flex; justify-content: space-between; align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-family: 'Inter', sans-serif;
     }
     .nav-logo {
-      display: flex; align-items: center; gap: 12px;
-      text-decoration: none; color: var(--nyt-black);
-      transition: opacity 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--nyt-black);
     }
-    .nav-logo:hover { opacity: 0.85; }
-    .nav-logo-img { height: 32px; width: auto; transition: transform 0.3s ease; }
-    .nav-logo:hover .nav-logo-img { transform: scale(1.04); }
+    .nav-logo-img {
+      height: 32px;
+      width: auto;
+    }
     .nav-logo-text {
-      font-weight: 800; font-size: 0.85rem; letter-spacing: -0.02em;
-      border-left: 1px solid var(--border-light); padding-left: 12px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      letter-spacing: -0.02em;
+      border-left: 1px solid var(--border-light);
+      padding-left: 12px;
     }
-    .nav-links { display: flex; gap: 1.75rem; align-items: center; }
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
     .nav-link {
-      text-decoration: none; color: var(--text-muted);
-      font-size: 0.72rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.06em;
-      position: relative;
-      transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: color 0.2s;
     }
-    .nav-link::after {
-      content: '';
-      position: absolute; bottom: -3px; left: 0;
-      width: 0; height: 1.5px;
-      background: var(--accent);
-      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .nav-link:hover { color: var(--nyt-black); }
-    .nav-link:hover::after { width: 100%; }
-
-    /* ========== HERO ========== */
-    .hero-header {
-      height: 62vh; min-height: 420px; max-height: 620px;
-      background-size: cover; background-position: center;
-      position: relative; display: flex; align-items: flex-end;
-      color: white;
-    }
-    .hero-overlay {
-      position: absolute; inset: 0;
-      background: linear-gradient(to bottom, rgba(15,23,42,0.18) 0%, rgba(15,23,42,0.85) 100%);
-      display: flex; align-items: flex-end;
-      padding: 0 24px 56px;
-    }
-    .hero-content { max-width: 920px; margin: 0 auto; width: 100%; }
-    .kicker {
-      font-family: 'Inter', sans-serif;
-      font-weight: 800; text-transform: uppercase;
-      font-size: 0.72rem; letter-spacing: 0.14em;
-      color: #fdba74; margin-bottom: 14px;
-      opacity: 0; transform: translateY(8px);
-      animation: fadeUp 0.6s 0.15s forwards;
-    }
-    .hero-header h1, .standard-header h1 {
-      font-family: 'Merriweather', Georgia, serif;
-      font-size: clamp(2.1rem, 4.8vw, 3.4rem);
-      line-height: 1.12; font-weight: 900;
-      letter-spacing: -0.015em; margin-bottom: 18px;
-      opacity: 0; transform: translateY(12px);
-      animation: fadeUp 0.7s 0.25s forwards;
-    }
-    .hero-meta {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.88rem; opacity: 0.92;
-      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
-      opacity: 0; transform: translateY(8px);
-      animation: fadeUp 0.6s 0.4s forwards;
-    }
-    .hero-meta .dot { opacity: 0.5; }
-    .reading-badge {
-      background: rgba(255,255,255,0.14);
-      padding: 4px 12px; border-radius: 20px;
-      font-size: 0.78rem; font-weight: 500;
-      backdrop-filter: blur(4px);
-      transition: background 0.25s ease;
-    }
-    .reading-badge:hover { background: rgba(255,255,255,0.22); }
-
-    @keyframes fadeUp {
-      to { opacity: 1; transform: translateY(0); }
+    .nav-link:hover {
+      color: var(--nyt-black);
     }
 
-    /* Standard header */
-    .standard-header {
-      max-width: 920px; margin: 0 auto;
-      padding: 72px 24px 40px; text-align: left;
-    }
-    .standard-header .kicker { color: var(--accent); }
-    .standard-header h1 { color: var(--nyt-black); }
-    .standard-header .hero-meta { color: var(--text-muted); }
-
-    /* ========== LAYOUT ========== */
     .layout-container {
-      max-width: 1200px; margin: 48px auto 80px;
-      padding: 0 24px;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px;
       display: grid;
-      grid-template-columns: minmax(0, 7.2fr) minmax(0, 3.5fr);
-      gap: 56px;
+      grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+      gap: 60px;
     }
-    @media (max-width: 980px) {
-      .layout-container { grid-template-columns: 1fr; gap: 40px; }
+    @media (max-width: 900px) {
+      .layout-container {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
     }
 
-    /* ========== ARTICLE BODY ========== */
-    .article-body {
-      font-size: 1.18rem; color: var(--text-body);
-      max-width: 100%;
+    .article-header {
+      margin-bottom: 30px;
     }
-    .article-body p { margin-bottom: 1.7rem; }
+    .article-breadcrumbs {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .article-breadcrumbs a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .article-breadcrumbs a:hover {
+      text-decoration: underline;
+    }
+    .article-kicker {
+      font-family: 'Inter', sans-serif;
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      color: var(--nyt-black);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .article-kicker time {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .kicker-divider {
+      color: var(--border-dark);
+    }
+    .article-title {
+      font-family: 'Merriweather', serif;
+      font-size: clamp(2rem, 4vw, 3.25rem);
+      line-height: 1.15;
+      font-weight: 900;
+      color: var(--nyt-black);
+      margin-bottom: 20px;
+      letter-spacing: -0.01em;
+    }
+    .article-author-line {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+    .article-author-line a {
+      color: var(--link-color);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .article-author-line a:hover {
+      text-decoration: underline;
+    }
+    .article-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-top: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      margin-bottom: 30px;
+    }
+    .share-group {
+      display: flex;
+      gap: 8px;
+    }
+    .share-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--border-dark);
+      background: #fff;
+      color: var(--nyt-black);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .share-btn:hover {
+      background: var(--bg-sidebar);
+      border-color: var(--nyt-black);
+    }
+    .share-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+    .meta-badges {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .oa-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--open-access);
+    }
+
+    .article-hero {
+      margin-bottom: 30px;
+    }
+    .article-hero img {
+      width: 100%;
+      max-height: 400px;
+      height: auto;
+      object-fit: cover;
+      display: block;
+      background: var(--bg-sidebar);
+    }
+    .article-hero figcaption {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      padding: 10px 0;
+      line-height: 1.5;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .article-body {
+      font-size: 1.15rem;
+    }
+    .article-body p {
+      margin-bottom: 1.75rem;
+    }
     .article-body > p:first-of-type::first-letter {
       float: left;
       font-family: 'Merriweather', serif;
-      font-size: 4.6rem; line-height: 3.6rem;
-      padding-top: 6px; padding-right: 10px; padding-left: 2px;
-      font-weight: 900; color: var(--nyt-black);
+      font-size: 4.5rem;
+      line-height: 3.5rem;
+      padding-top: 4px;
+      padding-right: 8px;
+      font-weight: 900;
+      color: var(--nyt-black);
+    }
+    .article-body h1, .article-body h2, .article-body h3, .article-body h4 {
+      scroll-margin-top: 80px;
     }
     .article-body h2 {
       font-family: 'Merriweather', serif;
-      font-size: 1.75rem; font-weight: 800;
-      color: var(--nyt-black); margin: 2.8rem 0 1.1rem;
-      border-bottom: 1px solid var(--border-light); padding-bottom: 0.45rem;
-      scroll-margin-top: 90px;
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--nyt-black);
+      margin: 2.5rem 0 1rem 0;
     }
     .article-body h3 {
       font-family: 'Merriweather', serif;
-      font-size: 1.35rem; font-weight: 700;
-      color: var(--nyt-black); margin: 2.2rem 0 0.9rem;
-      scroll-margin-top: 90px;
-    }
-    .article-body h4 {
-      font-family: 'Inter', sans-serif;
-      font-size: 1.1rem; font-weight: 700;
-      color: var(--nyt-black); margin: 1.8rem 0 0.7rem;
-    }
-
-    /* LINKS PREMIUM */
-    .article-body a {
-      color: var(--link);
-      text-decoration: none;
-      background-image: linear-gradient(transparent 0%, transparent calc(100% - 1.5px), var(--link) calc(100% - 1.5px));
-      background-size: 0% 100%;
-      background-repeat: no-repeat;
-      transition: background-size 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s ease;
-    }
-    .article-body a:hover {
+      font-size: 1.35rem;
+      font-weight: 700;
       color: var(--nyt-black);
-      background-size: 100% 100%;
+      margin: 2rem 0 1rem 0;
     }
-    .article-body a:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 3px;
-      border-radius: 2px;
+    .article-body a {
+      color: var(--link-color);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
     }
-
-    /* Imágenes */
-    .article-body img {
-      max-width: 100%; height: auto; display: block;
-      margin: 2.2rem auto; border-radius: 4px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.07);
-      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s ease;
-    }
-    .article-body img:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 32px rgba(0,0,0,0.1);
-    }
-    .article-body figure { margin: 2.5rem 0; }
-    .article-body figcaption {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.82rem; color: var(--text-muted);
-      margin-top: 0.75rem; line-height: 1.5;
-    }
-
-    /* Blockquotes */
     .article-body blockquote {
-      margin: 2.6rem 0;
-      padding: 1.4rem 1.8rem;
-      border-left: 4px solid var(--nyt-black);
-      background: var(--bg-sidebar);
-      font-family: 'Merriweather', serif;
-      font-style: italic; font-size: 1.22rem;
-      color: #334155; border-radius: 0 6px 6px 0;
-      transition: border-color 0.3s ease, background 0.3s ease;
+      margin: 2.5rem 0;
+      padding: 0 0 0 1.5rem;
+      border-left: 3px solid var(--nyt-black);
+      font-style: italic;
+      font-size: 1.25rem;
+      color: #334155;
     }
-    .article-body blockquote:hover {
-      border-left-color: var(--accent);
-      background: #fff7ed;
+    .article-body img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 2rem auto;
     }
-
-    /* Tablas */
-    .article-body table {
-      width: 100%; border-collapse: collapse;
-      margin: 2.8rem 0; font-family: 'Inter', sans-serif;
-      font-size: 0.9rem; display: block; overflow-x: auto;
-      border-top: 2px solid var(--nyt-black);
-      border-bottom: 2px solid var(--nyt-black);
-      border-radius: 4px;
+    .article-body ul, .article-body ol {
+      margin: 1.5rem 0 1.5rem 1.5rem;
     }
-    .article-body table th {
-      font-weight: 700; text-align: left;
-      padding: 14px 16px; border-bottom: 1px solid var(--nyt-black);
-      text-transform: uppercase; font-size: 0.72rem;
-      letter-spacing: 0.06em; color: var(--nyt-black);
-      background: #f8fafc; white-space: nowrap;
-    }
-    .article-body table td {
-      padding: 14px 16px; border-bottom: 1px solid var(--border-light);
-      vertical-align: top; color: #334155;
-      transition: background 0.2s ease;
-    }
-    .article-body table tr:hover td { background: #f8fafc; }
-    .article-body table tr:last-child td { border-bottom: none; }
-
-    /* Código */
-    .article-body pre {
-      background: #0f172a; color: #f1f5f9;
-      padding: 1.5rem; border-radius: 8px;
-      overflow-x: auto; font-family: 'JetBrains Mono', monospace;
-      font-size: 0.84rem; line-height: 1.65; margin: 2rem 0;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
-      transition: box-shadow 0.3s ease;
-    }
-    .article-body pre:hover {
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 24px rgba(15,23,42,0.15);
-    }
-    .article-body code {
-      font-family: 'JetBrains Mono', monospace;
-      background: #f1f5f9; padding: 2px 6px; border-radius: 4px;
-      font-size: 0.86em; color: #0f172a;
-      transition: background 0.2s ease;
-    }
-    .article-body code:hover { background: #e2e8f0; }
-    .article-body pre code { background: transparent; padding: 0; color: inherit; }
-
-    /* Listas */
-    .article-body ul, .article-body ol { margin: 1.5rem 0 1.5rem 1.6rem; }
-    .article-body li { margin-bottom: 0.55rem; }
-
-    /* Boxes */
-    .article-body .note-box,
-    .article-body .tip-box,
-    .article-body .warning-box {
-      margin: 2.2rem 0; padding: 1.3rem 1.6rem;
-      border-radius: 6px; font-size: 1.05rem;
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
-    }
-    .article-body .note-box { background: #f0f9ff; border-left: 4px solid #0284c7; }
-    .article-body .tip-box { background: #f0fdf4; border-left: 4px solid #16a34a; }
-    .article-body .warning-box { background: #fff7ed; border-left: 4px solid #ea580c; }
-    .article-body .note-box:hover,
-    .article-body .tip-box:hover,
-    .article-body .warning-box:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    .article-body li {
+      margin-bottom: 0.75rem;
     }
 
-    /* ========== SIDEBAR ========== */
-    .article-sidebar {
-      position: sticky; top: 92px;
-      align-self: start;
-      max-height: calc(100vh - 120px);
-      overflow-y: auto; padding-right: 8px;
-      scrollbar-width: thin;
-      scrollbar-color: #cbd5e1 transparent;
-    }
-    .article-sidebar::-webkit-scrollbar { width: 5px; }
-    .article-sidebar::-webkit-scrollbar-track { background: transparent; }
-    .article-sidebar::-webkit-scrollbar-thumb {
-      background: #cbd5e1; border-radius: 10px;
-    }
-    .article-sidebar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+/* Asegura que el sidebar completo use sticky */
+.article-sidebar {
+  position: sticky;
+  top: 100px;
+  align-self: start;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  padding-right: 10px;  /* Espacio para el scrollbar */
+}
 
-    @media (max-width: 980px) {
-      .article-sidebar { position: static; max-height: none; }
-    }
+/* Mantener el espaciado entre secciones */
+.sidebar-section {
+  margin-bottom: 40px;  /* Aumentado de 30px a 40px */
+  border-top: 2px solid var(--nyt-black);
+  padding-top: 20px;  /* Aumentado de 15px a 20px */
+}
 
-    .sidebar-section {
-      margin-bottom: 36px;
-      border-top: 2px solid var(--nyt-black);
-      padding-top: 18px;
-    }
+/* La última sección no necesita margen inferior */
+.sidebar-section:last-child {
+  margin-bottom: 0;
+}
+
+/* En móvil, desactivar el sticky */
+@media (max-width: 900px) {
+  .article-sidebar {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
+  }
+  
+  .sidebar-section {
+    margin-bottom: 30px;  /* Volver al margen original en móvil */
+  }
+}
     .sidebar-title {
       font-family: 'Inter', sans-serif;
-      font-size: 0.78rem; font-weight: 800;
-      text-transform: uppercase; letter-spacing: 0.07em;
-      color: var(--nyt-black); margin-bottom: 16px;
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--nyt-black);
+      margin-bottom: 20px;
     }
-
-    /* TOC */
-    .toc-list { list-style: none; }
-    .toc-link {
-      display: block; padding: 7px 12px;
+    .subject-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .subject-tag {
       font-family: 'Inter', sans-serif;
-      font-size: 0.82rem; color: var(--text-muted);
-      text-decoration: none; border-left: 2.5px solid transparent;
-      border-radius: 0 4px 4px 0;
-      transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-      line-height: 1.4;
-    }
-    .toc-link:hover {
-      color: var(--nyt-black);
-      background: var(--bg-sidebar);
-      border-left-color: #cbd5e1;
-    }
-    .toc-link.active {
-      color: var(--nyt-black);
-      border-left-color: var(--accent);
-      background: #fff7ed;
+      font-size: 0.75rem;
       font-weight: 600;
+      color: var(--link-color);
+      background: #f0f7ff;
+      padding: 6px 12px;
+      border-radius: 2px;
+      text-decoration: none;
     }
-    .toc-link.toc-h3 { padding-left: 22px; font-size: 0.78rem; }
-    .toc-link.toc-h4 { padding-left: 32px; font-size: 0.74rem; }
-
-    /* NEWSLETTER BOX */
+    
+    /* Newsletter Box */
     .newsletter-box {
       background: var(--bg-sidebar);
       border: 1px solid var(--border-light);
-      border-radius: 8px;
-      padding: 22px;
-      transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-    .newsletter-box:hover {
-      border-color: #cbd5e1;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+      padding: 24px;
     }
     .newsletter-box h4 {
       font-family: 'Merriweather', serif;
-      font-size: 1.1rem; font-weight: 800;
-      color: var(--nyt-black); margin-bottom: 8px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--nyt-black);
+      margin-bottom: 10px;
     }
     .newsletter-box p {
       font-family: 'Inter', sans-serif;
-      font-size: 0.84rem; color: var(--text-muted);
-      margin-bottom: 16px; line-height: 1.5;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
     }
     .newsletter-input {
       width: 100%;
-      padding: 11px 14px;
-      border: 1.5px solid var(--border-dark);
-      border-radius: 6px;
+      padding: 10px;
+      border: 1px solid var(--border-dark);
       margin-bottom: 10px;
       outline: none;
       font-family: 'Inter', sans-serif;
-      font-size: 0.88rem;
-      background: #fff;
-      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+      font-size: 0.85rem;
     }
     .newsletter-input:focus {
       border-color: var(--nyt-black);
-      box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
     }
-    .newsletter-input::placeholder { color: #94a3b8; }
     .newsletter-btn {
       width: 100%;
-      padding: 12px;
+      padding: 10px;
       background: var(--nyt-black);
       color: #fff;
       border: none;
-      border-radius: 6px;
       font-family: 'Inter', sans-serif;
       font-weight: 700;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
+      transition: background 0.2s;
     }
-    .newsletter-btn:hover:not(:disabled) {
-      background: var(--accent);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(234, 88, 12, 0.25);
-    }
-    .newsletter-btn:active:not(:disabled) {
-      transform: translateY(0);
+    .newsletter-btn:hover {
+      background: var(--accent-color);
     }
     .newsletter-btn:disabled {
-      opacity: 0.55;
+      opacity: 0.5;
       cursor: not-allowed;
     }
     .newsletter-error {
-      color: var(--error);
-      font-size: 0.78rem;
+      color: #dc2626;
+      font-size: 0.75rem;
       font-family: 'Inter', sans-serif;
       text-align: center;
-      margin-top: 10px;
-      display: none;
+      margin-top: 8px;
     }
     .newsletter-success {
       text-align: center;
-      padding: 18px 0 8px;
-      display: none;
+      padding: 20px 0;
     }
     .newsletter-success .check-icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 48px; height: 48px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       background: #dcfce7;
-      color: var(--success);
+      color: #16a34a;
       margin-bottom: 12px;
-      animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    @keyframes scaleIn {
-      from { transform: scale(0.6); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
     }
 
-    /* Meta row */
-    .meta-row {
-      display: flex; align-items: center; gap: 16px;
-      flex-wrap: wrap; margin: 28px 0 12px;
+.toc-box {
+  position: sticky;
+  top: 100px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+  /* NO usar position:sticky aquí porque ya el padre lo tiene */
+}
+
+/* Scrollbar personalizado para WebKit (Chrome, Safari, Edge) */
+.toc-box::-webkit-scrollbar {
+  width: 6px;
+}
+
+.toc-box::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.toc-box::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.toc-box::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+    .toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .toc-item {
+      margin-bottom: 4px;
+    }
+    .toc-link {
+      display: block;
+      padding: 6px 10px;
       font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all 0.2s;
+      line-height: 1.4;
     }
-    .oa-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      color: var(--open-access); font-weight: 600; font-size: 0.85rem;
-      transition: transform 0.2s ease;
+    .toc-link:hover {
+      color: var(--nyt-black);
+      background: var(--bg-sidebar);
     }
-    .oa-badge:hover { transform: scale(1.03); }
-    .share-group { display: flex; gap: 8px; }
-    .share-btn {
-      width: 36px; height: 36px; border-radius: 50%;
-      border: 1.5px solid var(--border-dark); background: #fff;
-      color: var(--nyt-black); cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    .toc-link.active {
+      color: var(--nyt-black);
+      border-left-color: var(--accent-color);
+      background: #fef3c7;
+      font-weight: 600;
     }
-    .share-btn:hover {
-      background: var(--nyt-black);
-      color: #fff;
-      border-color: var(--nyt-black);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.15);
+    .toc-link.toc-h2 {
+      padding-left: 15px;
+      font-weight: 600;
     }
-    .share-btn:active { transform: translateY(0); }
-    .share-btn svg { width: 14px; height: 14px; fill: currentColor; transition: fill 0.2s; }
+    .toc-link.toc-h3 {
+      padding-left: 25px;
+      font-size: 0.75rem;
+    }
+    .toc-link.toc-h4 {
+      padding-left: 35px;
+      font-size: 0.7rem;
+    }
+/* ===================================================
+   CSS FINAL: CONTENIDO COMPLEJO EN ARTÍCULOS CIENTÍFICOS
+   Estilo Editorial / Nature / Elsevier High-End
+   Con manejo responsive completo para móvil y desktop
+   =================================================== */
 
-    /* Citation */
-    .citation-box {
-      margin-top: 52px; padding-top: 28px;
-      border-top: 1px solid var(--border-light);
+/* --- CONTENEDOR GENERAL --- */
+.article-body {
+  font-family: 'Lora', serif;
+  color: #222222;
+  font-size: 1.15rem;
+  line-height: 1.8;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+/* --- IMÁGENES RESPONSIVE Y PIES DE FOTO --- */
+.article-body img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 2.5rem auto;
+  border-radius: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Imágenes flotantes con estilo editorial */
+.article-body img[style*="float: left"],
+.article-body .float-left {
+  float: left;
+  margin: 1.5rem 2.5rem 1.5rem 0;
+  max-width: 45%;
+  clear: left;
+}
+
+.article-body img[style*="float: right"],
+.article-body .float-right {
+  float: right;
+  margin: 1.5rem 0 1.5rem 2.5rem;
+  max-width: 45%;
+  clear: right;
+}
+
+/* Limpieza de floats */
+.article-body .clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* En dispositivos móviles, las imágenes flotantes ocupan todo el ancho */
+@media (max-width: 768px) {
+  .article-body img[style*="float: left"],
+  .article-body img[style*="float: right"],
+  .article-body .float-left,
+  .article-body .float-right {
+    float: none !important;
+    max-width: 100% !important;
+    margin: 2rem auto !important;
+  }
+}
+
+/* --- TABLAS DE DATOS (ESTILO ELSEVIER / ACADÉMICO) --- */
+.article-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2.5rem 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  border-top: 2px solid #0f172a;
+  border-bottom: 2px solid #0f172a;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.article-body table thead {
+  background: #f8fafc;
+}
+
+.article-body table th {
+  font-weight: 700;
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid #0f172a;
+  color: #0f172a;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.article-body table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.article-body table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.article-body table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* Contenedor envolvente para tablas con scroll horizontal seguro */
+.article-body .table-wrapper {
+  overflow-x: auto;
+  margin: 2.5rem 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.article-body .table-wrapper table {
+  margin: 0;
+  border: none;
+  display: table;
+  min-width: 650px;
+}
+
+@media (max-width: 768px) {
+  .article-body table {
+    font-size: 0.8rem;
+  }
+  .article-body table th,
+  .article-body table td {
+    padding: 10px 12px;
+  }
+}
+
+/* --- TIPOGRAFÍA DE LISTAS --- */
+.article-body ul,
+.article-body ol {
+  margin: 1.75rem 0;
+  padding-left: 1.75rem;
+}
+
+/* Listas anidadas con indentación progresiva */
+.article-body ul ul,
+.article-body ol ol,
+.article-body ul ol,
+.article-body ol ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.article-body li {
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.article-body li > ul,
+.article-body li > ol {
+  margin-top: 0.5rem;
+}
+
+/* Listas de verificación personalizadas sin emojis */
+.article-body ul[data-checked="true"],
+.article-body ul[data-checked="false"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.article-body ul[data-checked="true"] li,
+.article-body ul[data-checked="false"] li {
+  padding-left: 2rem;
+  position: relative;
+}
+
+.article-body ul[data-checked="true"] li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #16a34a;
+  font-weight: 800;
+  font-family: 'Inter', sans-serif;
+}
+
+.article-body ul[data-checked="false"] li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: #64748b;
+  font-weight: 800;
+}
+
+/* --- FÓRMULAS MATEMÁTICAS (MATHJAX) --- */
+.article-body .ql-formula,
+.article-body .MathJax {
+  display: inline-block;
+  margin: 0 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding: 4px 0;
+  color: #0f172a;
+}
+
+/* Fórmulas en modo display */
+.article-body .MathJax_Display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding: 1.25rem 0;
+  margin: 2rem 0;
+  background: #fafaf9;
+  border-left: 3px solid #0f172a;
+  border-radius: 0 4px 4px 0;
+}
+
+@media (max-width: 768px) {
+  .article-body .ql-formula,
+  .article-body .MathJax {
+    font-size: 0.9rem;
+  }
+}
+
+/* --- BLOQUES DE CÓDIGO TIPO TERMINAL ACADÉMICA --- */
+.article-body pre {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 1.75rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  margin: 2rem 0;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  -webkit-overflow-scrolling: touch;
+}
+
+.article-body code {
+  font-family: 'JetBrains Mono', monospace;
+  background: #f1f5f9;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+}
+
+.article-body pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  border: none;
+}
+
+/* --- CITAS TEXTUALES (BLOCKQUOTES) --- */
+.article-body blockquote {
+  margin: 2.5rem 0;
+  padding: 1.25rem 2rem;
+  border-left: 4px solid #0f172a;
+  background: #f8fafc;
+  font-family: 'Merriweather', serif;
+  font-style: italic;
+  font-size: 1.2rem;
+  color: #334155;
+  border-radius: 0 4px 4px 0;
+}
+
+.article-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- ENCABEZADOS INTERNOS --- */
+.article-body h1[id],
+.article-body h2[id],
+.article-body h3[id],
+.article-body h4[id] {
+  scroll-margin-top: 100px;
+  font-family: 'Merriweather', serif;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.article-body h2 {
+  font-size: 1.85rem;
+  margin-top: 3rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+
+.article-body h3 {
+  font-size: 1.4rem;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+/* --- ENLACES INTERNOS --- */
+.article-body a {
+  color: #0369a1;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: color 0.2s;
+}
+
+.article-body a:hover {
+  color: #0f172a;
+  text-decoration-thickness: 2px;
+}
+
+/* --- VIDEOS Y RECURSOS MULTIMEDIA --- */
+.article-body video,
+.article-body iframe {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  margin: 2.5rem auto;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
+}
+
+/* --- ELEMENTOS COLAPSABLES (DETAILS / SUMMARY) --- */
+.article-body details {
+  margin: 2rem 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 1.25rem;
+  background: #fff;
+}
+
+.article-body summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #0f172a;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  padding: 0.25rem;
+}
+
+.article-body details[open] summary {
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+}
+
+/* --- SEPARADORES --- */
+.article-body hr {
+  border: none;
+  border-top: 1px solid #cbd5e1;
+  margin: 3.5rem auto;
+  width: 40%;
+}
+
+/* --- BADGES EDITORIALES --- */
+.article-body .badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 4px;
+  vertical-align: middle;
+}
+
+.article-body .badge-primary { background: #e0f2fe; color: #0369a1; }
+.article-body .badge-success { background: #dcfce7; color: #166534; }
+.article-body .badge-warning { background: #fef3c7; color: #92400e; }
+.article-body .badge-danger  { background: #fee2e2; color: #991b1b; }
+
+/* --- ACCESIBILIDAD Y MOVIMIENTO --- */
+.article-body :focus-visible {
+  outline: 2px solid #ea580c;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .article-body * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* --- MEDIA QUERIES ADICIONALES --- */
+@media (max-width: 640px) {
+  .article-body {
+    font-size: 0.95rem;
+  }
+  
+  .article-body h2 {
+    font-size: 1.5rem;
+  }
+  
+  .article-body h3 {
+    font-size: 1.2rem;
+  }
+  
+  .article-body blockquote {
+    padding: 1rem;
+    font-size: 1.1rem;
+  }
+  
+  .article-body pre {
+    padding: 1rem;
+    font-size: 0.8rem;
+  }
+}
+    /* Audio Player */
+    .audio-player-editorial {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      background: #fff;
+      border: 1px solid var(--nyt-black);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
       font-family: 'Inter', sans-serif;
-      font-size: 0.86rem; color: var(--text-muted); line-height: 1.65;
+      border-radius: 4px;
     }
-    .citation-box strong {
-      display: block; font-size: 0.74rem;
-      text-transform: uppercase; letter-spacing: 0.07em;
-      color: var(--nyt-black); margin-bottom: 10px;
+    .audio-player-editorial.hidden {
+      display: none;
     }
-
-    /* ========== AUDIO PLAYER ========== */
-    .audio-player {
-      position: fixed; bottom: 28px; right: 28px; z-index: 1000;
-      background: #fff; border: 1.5px solid var(--nyt-black);
-      box-shadow: 0 12px 36px rgba(0,0,0,0.12);
-      padding: 11px 15px; display: flex; align-items: center; gap: 12px;
-      font-family: 'Inter', sans-serif; border-radius: 10px;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    .audio-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .audio-player:hover {
-      box-shadow: 0 16px 40px rgba(0,0,0,0.16);
-      transform: translateY(-2px);
-    }
-    .audio-player.hidden { display: none; }
     .audio-btn {
-      width: 36px; height: 36px; border-radius: 50%;
-      border: 1.5px solid var(--border-dark); background: transparent;
-      color: var(--nyt-black); cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--border-dark);
+      background: transparent;
+      color: var(--nyt-black);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .audio-btn:hover {
-      background: var(--nyt-black);
-      color: #fff;
+      background: var(--bg-sidebar);
       border-color: var(--nyt-black);
-      transform: scale(1.06);
     }
-    .audio-btn:active { transform: scale(0.96); }
-    .audio-btn svg { width: 14px; height: 14px; fill: currentColor; }
+    .audio-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+    .audio-btn.close-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      color: var(--text-muted);
+    }
+    .audio-info {
+      display: flex;
+      flex-direction: column;
+    }
     .audio-status {
-      font-size: 0.72rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.05em;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--nyt-black);
     }
     .audio-progress {
-      width: 110px; height: 3px; background: var(--border-light); 
-      margin-top: 6px; border-radius: 2px; overflow: hidden;
+      width: 120px;
+      height: 2px;
+      background: var(--border-light);
+      margin-top: 6px;
     }
     .audio-progress-bar {
-      height: 100%; background: var(--accent); width: 0%;
-      transition: width 0.12s linear;
-      border-radius: 2px;
+      height: 100%;
+      background: var(--accent-color);
+      width: 0%;
+      transition: width 0.1s linear;
     }
 
-    /* ========== FOOTER ========== */
+    /* Footer */
     .footer {
       border-top: 1px solid var(--border-light);
-      background: #fff; padding: 56px 24px 36px; margin-top: 60px;
+      background: #fff;
+      padding: 60px 20px 40px;
+      margin-top: 80px;
       font-family: 'Inter', sans-serif;
     }
     .footer-container {
-      max-width: 1200px; margin: 0 auto;
-      display: grid; grid-template-columns: 1.4fr 1fr;
-      gap: 40px; border-bottom: 1px solid var(--border-light);
-      padding-bottom: 36px; margin-bottom: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 40px;
+      margin-bottom: 20px;
     }
-    @media (max-width: 700px) {
-      .footer-container { grid-template-columns: 1fr; text-align: center; }
+    @media (max-width: 768px) {
+      .footer-container {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
     }
     .footer-brand {
       font-family: 'Merriweather', serif;
-      font-size: 1.35rem; font-weight: 900; color: var(--nyt-black);
-      margin-bottom: 12px;
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: var(--nyt-black);
+      margin-bottom: 15px;
     }
-    .footer-desc { font-size: 0.86rem; color: var(--text-muted); max-width: 340px; line-height: 1.6; }
-    .footer-social { display: flex; gap: 16px; margin-top: 20px; }
+    .footer-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 300px;
+    }
+    .footer-social {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+    }
     .footer-social a {
       color: var(--nyt-black);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      display: inline-flex;
-    }
-    .footer-social a:hover {
-      color: var(--accent);
-      transform: translateY(-3px);
     }
     .footer-bottom {
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: 0.75rem; color: var(--text-muted);
-      max-width: 1200px; margin: 0 auto; flex-wrap: wrap; gap: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      max-width: 1200px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      gap: 15px;
     }
-    .footer-bottom-links { display: flex; gap: 18px; }
+    .footer-bottom-links {
+      display: flex;
+      gap: 15px;
+    }
     .footer-bottom-links a {
-      color: var(--text-muted); text-decoration: none;
-      transition: color 0.25s ease;
-      position: relative;
+      color: var(--text-muted);
+      text-decoration: none;
     }
-    .footer-bottom-links a::after {
-      content: '';
-      position: absolute; bottom: -2px; left: 0;
-      width: 0; height: 1px; background: var(--accent);
-      transition: width 0.3s ease;
-    }
-    .footer-bottom-links a:hover { color: var(--nyt-black); }
-    .footer-bottom-links a:hover::after { width: 100%; }
 
-    /* Responsive */
     @media (max-width: 768px) {
-      .hero-header { height: 52vh; min-height: 340px; }
-      .article-body { font-size: 1.05rem; }
-      .audio-player { bottom: 16px; right: 16px; padding: 9px 12px; }
-      .nav-logo-text { display: none; }
-    }
-
-    /* Focus visible global */
-    :focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 3px;
+      .audio-player-editorial {
+        bottom: 15px;
+        right: 15px;
+        padding: 10px 12px;
+      }
+      .article-body {
+        font-size: 1rem;
+      }
+      .nav-minimal {
+        padding: 10px 15px;
+      }
+      .nav-logo-text {
+        display: none;
+      }
+      .toc-box {
+        position: static;
+        max-height: none;
+      }
     }
   </style>
 
   <script>
     window.MathJax = {
-      tex: { inlineMath: [['\\\\(', '\\\\)']], displayMath: [['\\\\[', '\\\\]']], processEscapes: true },
-      options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+      tex: {
+        inlineMath: [['\\\\(', '\\\\)']],
+        displayMath: [['\\\\[', '\\\\]']],
+        processEscapes: true
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] }
     };
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
 </head>
 <body>
-  <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+  
+  <div class="progress-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
 
-  <header class="site-header" id="siteHeader">
+  <header class="site-header">
     <nav class="nav-minimal">
       <a href="/" class="nav-logo">
         <img src="${logo}" alt="Logo" class="nav-logo-img">
@@ -1169,96 +1640,140 @@ function generateNewsHtmlTemplate({
     </nav>
   </header>
 
-  ${headerHtml}
-
   <main class="layout-container">
+    
     <article class="article-main">
-      <div class="meta-row">
-        <div class="share-group">
-          <button class="share-btn" onclick="shareOnTwitter()" title="Twitter" aria-label="Share on Twitter">
-            <svg viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>
-          </button>
-          <button class="share-btn" onclick="shareOnFacebook()" title="Facebook" aria-label="Share on Facebook">
-            <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-          </button>
-          <button class="share-btn" onclick="shareOnLinkedIn()" title="LinkedIn" aria-label="Share on LinkedIn">
-            <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
-          </button>
+      <header class="article-header">
+        
+        <div class="article-breadcrumbs">
+          <a href="/">${t.home}</a> 
+          <span>›</span> 
+          <a href="${isSpanish ? '/new' : '/en/new'}">${t.news}</a>
+          <span>›</span> 
+          <span>${isSpanish ? areaInfo.es : areaInfo.en}</span>
         </div>
-        <span class="oa-badge" title="Open Access">${oaSvg} ${t.openAccess}</span>
-      </div>
+
+        <div class="article-kicker">
+          <span>${t.article}</span>
+          <span class="kicker-divider">|</span>
+          <time>${isSpanish ? formatLongDateEs(fecha) : formatLongDateEn(fecha)}</time>
+        </div>
+
+        <h1 class="article-title">${title}</h1>
+        
+        <div class="article-author-line">
+          ${t.by} <a href="${domain}/team/${authorSlug}.html">${authorName}</a>
+          ${featured ? ` • <span style="color: #f59e0b;">${featuredSvg} ${t.featured}</span>` : ''}
+        </div>
+
+        <div class="article-actions">
+          <div class="share-group">
+            <button class="share-btn" onclick="shareOnTwitter()" title="Twitter">
+              <svg viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>
+            </button>
+            <button class="share-btn" onclick="shareOnFacebook()" title="Facebook">
+              <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            </button>
+            <button class="share-btn" onclick="shareOnLinkedIn()" title="LinkedIn">
+              <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+            </button>
+          </div>
+          
+          <div class="meta-badges">
+            <span class="reading-time-badge">
+              ⏱ ${readingTime.display} ${t.readingTime}
+            </span>
+            <span class="oa-badge" title="Open Access">
+              ${oaSvg}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      ${headerImageHtml}
 
       <div class="article-body" id="articleContent">
         ${contentWithIds}
       </div>
-
-      <div class="citation-box">
-        <strong>${t.citation}</strong>
-        ${authorName}. (${new Date(fecha).getFullYear()}). ${title}. ${journalName}. ${domain}/news/${slug}${isSpanish ? '' : '.EN'}.html
+      
+      <div class="sidebar-section" style="margin-top: 60px;">
+        <h3 class="sidebar-title">${t.citation}</h3>
+        <p style="font-family: 'Inter', sans-serif; font-size: 0.85rem; color: var(--text-muted);">
+          ${authorName}. (${new Date(fecha).getFullYear()}). ${title}. ${journalName}. ${domain}/news/${slug}${isSpanish ? '' : '.EN'}.html
+        </p>
       </div>
+
     </article>
 
     <aside class="article-sidebar">
-      ${headings.length > 0 ? `
+      
+      ${tags.length > 0 ? `
       <div class="sidebar-section">
-        <h3 class="sidebar-title">${t.index}</h3>
-        <ul class="toc-list">
-          ${headings.map(h => `
-            <li>
-              <a href="#${h.id}" class="toc-link toc-${h.level}" data-target="${h.id}">${h.text}</a>
-            </li>
-          `).join('')}
-        </ul>
-      </div>` : ''}
+        <h3 class="sidebar-title">${t.tags}</h3>
+        <div class="subject-list">
+          ${tags.map(tag => `<a href="#" class="subject-tag">${tag}</a>`).join('')}
+        </div>
+      </div>
+      ` : ''}
 
-      <!-- NEWSLETTER -->
       <div class="sidebar-section">
         <div class="newsletter-box" id="newsletterBox">
           <h4>${t.newsletterTitle}</h4>
           <p>${t.newsletterText}</p>
           <div id="newsletterForm">
-            <input type="text" id="newsletterName" class="newsletter-input" placeholder="${t.namePlaceholder}" required autocomplete="name">
-            <input type="email" id="newsletterEmail" class="newsletter-input" placeholder="${t.emailPlaceholder}" required autocomplete="email">
+            <input type="text" id="newsletterName" class="newsletter-input" placeholder="${t.namePlaceholder}" required>
+            <input type="email" id="newsletterEmail" class="newsletter-input" placeholder="${t.emailPlaceholder}" required>
             <button id="newsletterSubmit" class="newsletter-btn">${t.newsletterBtn}</button>
-            <div id="newsletterError" class="newsletter-error"></div>
+            <div id="newsletterError" class="newsletter-error" style="display:none;"></div>
           </div>
-          <div id="newsletterSuccess" class="newsletter-success">
+          <div id="newsletterSuccess" class="newsletter-success" style="display:none;">
             <div class="check-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <p style="font-family:'Inter',sans-serif; font-size:0.9rem; color:var(--success); font-weight:700; margin-bottom:4px;">${t.successTitle}</p>
-            <p style="font-family:'Inter',sans-serif; font-size:0.8rem; color:var(--text-muted);">${t.successMessage}</p>
+            <p style="font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #16a34a; font-weight: 600;">${t.successTitle}</p>
+            <p style="font-family: 'Inter', sans-serif; font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">${t.successMessage}</p>
           </div>
         </div>
       </div>
 
+      ${headings.length > 0 ? `
       <div class="sidebar-section">
-        <h3 class="sidebar-title">${isSpanish ? 'Sobre esta noticia' : 'About this news'}</h3>
-        <p style="font-family:'Inter',sans-serif; font-size:0.85rem; color:var(--text-muted); line-height:1.55;">
-          ${isSpanish 
-            ? 'Noticia editorial de la Revista Nacional de las Ciencias para Estudiantes. Contenido revisado y de acceso abierto.'
-            : 'Editorial news from The National Review of Sciences for Students. Peer-reviewed content under open access.'}
-        </p>
+        <div class="toc-box">
+          <h3 class="sidebar-title">${t.index}</h3>
+          <ul class="toc-list">
+            ${headings.map(h => `
+              <li class="toc-item">
+                <a href="#${h.id}" class="toc-link toc-${h.level}" data-target="${h.id}">${h.text}</a>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
       </div>
+      ` : ''}
+
     </aside>
+
   </main>
 
-  <!-- Audio Player -->
-  <div class="audio-player" id="audioPlayer">
-    <button class="audio-btn" id="playPauseBtn" title="${t.listen}" aria-label="${t.listen}">
-      <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-    </button>
-    <button class="audio-btn" id="stopBtn" title="${t.stop}" aria-label="${t.stop}">
-      <svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10"/></svg>
-    </button>
-    <div>
-      <div class="audio-status" id="statusText">${t.listen}</div>
-      <div class="audio-progress"><div class="audio-progress-bar" id="audioProgressBar"></div></div>
+  <div class="audio-player-editorial" id="audioPlayer">
+    <div class="audio-controls">
+      <button class="audio-btn" id="playPauseBtn" title="${t.listen}">
+        <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button class="audio-btn" id="stopBtn" title="${t.stop}">
+        <svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10"/></svg>
+      </button>
     </div>
-    <button class="audio-btn" id="closeAudioBtn" title="${t.closeAudio}" aria-label="${t.closeAudio}" style="width:28px;height:28px;border:none;">
-      <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.2" fill="none"/></svg>
+    <div class="audio-info">
+      <span class="audio-status" id="statusText">${t.listen}</span>
+      <div class="audio-progress">
+        <div class="audio-progress-bar" id="audioProgressBar"></div>
+      </div>
+    </div>
+    <button class="audio-btn close-btn" id="closeAudioBtn" title="${t.closeAudio}">
+      <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" fill="none"/></svg>
     </button>
   </div>
 
@@ -1267,71 +1782,78 @@ function generateNewsHtmlTemplate({
       <div>
         <div class="footer-brand">${journalName}</div>
         <p class="footer-desc">${t.footerDesc}</p>
-        <div class="footer-social">
-          <a href="${socialLinks.instagram}" title="Instagram" target="_blank" rel="noopener">${socialIcons.instagram}</a>
-          <a href="${socialLinks.youtube}" title="YouTube" target="_blank" rel="noopener">${socialIcons.youtube}</a>
-          <a href="${socialLinks.tiktok}" title="TikTok" target="_blank" rel="noopener">${socialIcons.tiktok}</a>
-          <a href="${socialLinks.spotify}" title="Spotify" target="_blank" rel="noopener">${socialIcons.spotify}</a>
-        </div>
       </div>
-      <div style="display:flex; justify-content:flex-end; align-items:flex-start;">
-        <div>
-          <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:8px;">${t.contact}</div>
-          <a href="mailto:contact@revistacienciasestudiantes.com" style="color:var(--nyt-black); text-decoration:none; font-weight:600; transition:color 0.25s;">
-            contact@revistacienciasestudiantes.com
-          </a>
+      <div style="display: flex; justify-content: flex-end; align-items: flex-start;">
+        <div class="footer-social">
+          <a href="${socialLinks.instagram}" title="Instagram">${socialIcons.instagram}</a>
+          <a href="${socialLinks.youtube}" title="YouTube">${socialIcons.youtube}</a>
+          <a href="${socialLinks.tiktok}" title="TikTok">${socialIcons.tiktok}</a>
+          <a href="${socialLinks.spotify}" title="Spotify">${socialIcons.spotify}</a>
         </div>
       </div>
     </div>
+    
     <div class="footer-bottom">
-      <div>© ${new Date().getFullYear()} ${journalName} · ISSN 3087-2839</div>
+      <div>© ${new Date().getFullYear()} ${journalName}. ISSN 3087-2839</div>
       <div class="footer-bottom-links">
         <a href="/privacy${isSpanish ? '' : 'EN'}.html">${t.privacy}</a>
         <a href="/terms${isSpanish ? '' : 'EN'}.html">${t.terms}</a>
+        <a href="mailto:contact@revistacienciasestudiantes.com">${t.contact}</a>
       </div>
     </div>
   </footer>
 
   <script>
-    // Header shadow on scroll
-    window.addEventListener('scroll', () => {
-      const header = document.getElementById('siteHeader');
-      if (window.scrollY > 20) header.classList.add('scrolled');
-      else header.classList.remove('scrolled');
-    });
-
-    // Progress + TOC
+    // ========== PROGRESS BAR ==========
     window.addEventListener('scroll', () => {
       const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
       const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      document.getElementById('progressBar').style.width = (winScroll / height * 100) + '%';
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progressBar').style.width = scrolled + '%';
       
-      const sections = document.querySelectorAll('.article-body h1[id], .article-body h2[id], .article-body h3[id], .article-body h4[id]');
-      const tocLinks = document.querySelectorAll('.toc-link');
-      let current = '';
-      sections.forEach(s => {
-        if (window.scrollY >= s.offsetTop - 110) current = s.id;
-      });
-      tocLinks.forEach(link => {
-        link.classList.toggle('active', link.dataset.target === current);
-      });
+      // Highlight active TOC link
+      highlightToc();
     });
 
-    // Share
+    // ========== TABLE OF CONTENTS ==========
+    function highlightToc() {
+      const sections = document.querySelectorAll('.article-body h1[id], .article-body h2[id], .article-body h3[id], .article-body h4[id]');
+      const tocLinks = document.querySelectorAll('.toc-link');
+      
+      let currentSection = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop - 100;
+        if (window.scrollY >= sectionTop) {
+          currentSection = section.id;
+        }
+      });
+      
+      tocLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.dataset.target === currentSection) {
+          link.classList.add('active');
+        }
+      });
+    }
+
+    // ========== SHARING ==========
     function shareOnTwitter() {
       const url = encodeURIComponent(window.location.href);
       const text = encodeURIComponent(document.title);
       window.open('https://twitter.com/intent/tweet?url=' + url + '&text=' + text, '_blank');
     }
     function shareOnFacebook() {
-      window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(window.location.href), '_blank');
+      const url = encodeURIComponent(window.location.href);
+      window.open('https://www.facebook.com/sharer/sharer.php?u=' + url, '_blank');
     }
     function shareOnLinkedIn() {
-      window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(window.location.href), '_blank');
+      const url = encodeURIComponent(window.location.href);
+      window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + url, '_blank');
     }
 
     // ========== NEWSLETTER FIREBASE ==========
     document.addEventListener('DOMContentLoaded', function() {
+      // Firebase config
       const firebaseConfig = {
         apiKey: "AIzaSyArr3LE_hQLZG0L5m9JND2OWVL8elnSyWk",
         authDomain: "usuarios-rnce.firebaseapp.com",
@@ -1344,6 +1866,7 @@ function generateNewsHtmlTemplate({
       
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
+      
       const CHECK_SUBSCRIPTION_URL = 'https://us-central1-usuarios-rnce.cloudfunctions.net/checkSubscription';
       
       const nameInput = document.getElementById('newsletterName');
@@ -1439,7 +1962,7 @@ function generateNewsHtmlTemplate({
             successDiv.style.display = 'none';
             nameInput.value = '';
             emailInput.value = '';
-          }, 5500);
+          }, 5000);
           
         } catch (error) {
           console.error('Error subscribing:', error);
@@ -1463,15 +1986,15 @@ function generateNewsHtmlTemplate({
       const articleContentEl = document.getElementById('articleContent');
       const audioPlayer = document.getElementById('audioPlayer');
 
-      if (!playPauseBtn || !articleContentEl) return;
+      if (!playPauseBtn || !stopBtn || !statusText || !playIcon || !audioProgressBar || !articleContentEl || !audioPlayer) return;
 
       let utterance = null;
       let isPlaying = false;
       let synthesis = window.speechSynthesis;
       let currentCharIndex = 0;
-      let fullText = (articleContentEl.innerText || '').trim();
+      let fullText = (articleContentEl.innerText || articleContentEl.textContent || '').trim();
       const totalChars = fullText.length;
-      const lang = document.documentElement.lang.substring(0, 2) || 'es';
+      let lang = document.documentElement.lang.substring(0, 2) || 'es';
 
       function stopSpeech() {
         if (synthesis) synthesis.cancel();
@@ -1482,49 +2005,63 @@ function generateNewsHtmlTemplate({
 
       function createUtterance() {
         if (!fullText || currentCharIndex >= totalChars) return null;
-        const remaining = fullText.substring(currentCharIndex);
-        if (!remaining.trim()) return null;
-        const u = new SpeechSynthesisUtterance(remaining);
-        u.lang = lang === 'es' ? 'es-ES' : 'en-US';
-        u.rate = 1;
-        u.onstart = () => { isPlaying = true; updateUI(); };
-        u.onend = () => { isPlaying = false; currentCharIndex = totalChars; updateProgress(); updateUI(); };
-        u.onboundary = (e) => {
+        const remainingText = fullText.substring(currentCharIndex);
+        if (!remainingText.trim()) return null;
+
+        const newUtterance = new SpeechSynthesisUtterance(remainingText);
+        newUtterance.lang = lang === 'es' ? 'es-ES' : 'en-US';
+        newUtterance.rate = 1;
+
+        newUtterance.onstart = () => { isPlaying = true; updateUI(); };
+        newUtterance.onend = () => { isPlaying = false; currentCharIndex = totalChars; updateProgress(); updateUI(); };
+        newUtterance.onboundary = (e) => {
           if (e.name === 'word' || e.name === 'sentence') {
-            currentCharIndex += e.charIndex + (e.charLength || 1);
+            currentCharIndex += e.charIndex + (e.name === 'word' ? e.charLength || 1 : 0);
             updateProgress();
           }
         };
-        return u;
+        newUtterance.onerror = () => { isPlaying = false; updateUI(); };
+        return newUtterance;
       }
 
       function playSpeech() {
         stopSpeech();
         utterance = createUtterance();
-        if (utterance) synthesis.speak(utterance);
+        if (utterance) { synthesis.speak(utterance); isPlaying = true; updateUI(); }
+      }
+
+      function togglePlayPause() {
+        if (isPlaying) { stopSpeech(); } else { playSpeech(); }
       }
 
       function updateUI() {
-        statusText.innerText = isPlaying 
-          ? (lang === 'es' ? 'Reproduciendo...' : 'Playing...') 
-          : (lang === 'es' ? 'Escuchar noticia' : 'Listen to article');
-        playIcon.innerHTML = isPlaying 
-          ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>' 
-          : '<path d="M8 5v14l11-7z"/>';
+        if (statusText) statusText.innerText = isPlaying ? (lang === 'es' ? 'Reproduciendo...' : 'Playing...') : (lang === 'es' ? 'Escuchar noticia' : 'Listen to article');
+        if (playIcon) playIcon.innerHTML = isPlaying ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
       }
 
       function updateProgress() {
-        if (totalChars > 0) {
-          audioProgressBar.style.width = Math.min((currentCharIndex / totalChars) * 100, 100) + '%';
+        if (audioProgressBar && totalChars > 0) {
+          const progress = (currentCharIndex / totalChars) * 100;
+          audioProgressBar.style.width = Math.min(progress, 100) + '%';
         }
       }
 
       playPauseBtn.addEventListener('click', () => {
         if (!synthesis) { alert(lang === 'es' ? 'Texto a voz no soportado' : 'Text-to-speech not supported'); return; }
-        isPlaying ? stopSpeech() : playSpeech();
+        togglePlayPause();
       });
-      stopBtn.addEventListener('click', () => { currentCharIndex = 0; stopSpeech(); updateProgress(); });
-      closeAudioBtn.addEventListener('click', () => { stopSpeech(); audioPlayer.classList.add('hidden'); });
+
+      stopBtn.addEventListener('click', () => {
+        currentCharIndex = 0;
+        stopSpeech();
+        updateProgress();
+      });
+      
+      closeAudioBtn.addEventListener('click', () => {
+        stopSpeech();
+        audioPlayer.classList.add('hidden');
+      });
+
       window.addEventListener('beforeunload', stopSpeech);
     });
   </script>
