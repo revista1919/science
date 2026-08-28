@@ -840,6 +840,19 @@ function generateNewsHtmlTemplate({
   align-self: start;
   max-height: calc(100vh - 140px);
   overflow-y: auto;
+  padding-right: 10px;  /* Espacio para el scrollbar */
+}
+
+/* Mantener el espaciado entre secciones */
+.sidebar-section {
+  margin-bottom: 40px;  /* Aumentado de 30px a 40px */
+  border-top: 2px solid var(--nyt-black);
+  padding-top: 20px;  /* Aumentado de 15px a 20px */
+}
+
+/* La última sección no necesita margen inferior */
+.sidebar-section:last-child {
+  margin-bottom: 0;
 }
 
 /* En móvil, desactivar el sticky */
@@ -848,6 +861,11 @@ function generateNewsHtmlTemplate({
     position: static;
     max-height: none;
     overflow-y: visible;
+    padding-right: 0;
+  }
+  
+  .sidebar-section {
+    margin-bottom: 30px;  /* Volver al margen original en móvil */
   }
 }
     .sidebar-title {
@@ -952,11 +970,12 @@ function generateNewsHtmlTemplate({
 
 .toc-box {
   position: sticky;
-  top: 100px;  /* Aumentado para que no choque con el header sticky */
-  max-height: calc(100vh - 140px);  /* Ajustado para dar más espacio */
+  top: 100px;
+  max-height: calc(100vh - 140px);
   overflow-y: auto;
-  scrollbar-width: thin;  /* Scrollbar más delgado en Firefox */
-  scrollbar-color: #cbd5e1 #f8fafc;  /* Colores del scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+  /* NO usar position:sticky aquí porque ya el padre lo tiene */
 }
 
 /* Scrollbar personalizado para WebKit (Chrome, Safari, Edge) */
