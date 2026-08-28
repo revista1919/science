@@ -1648,7 +1648,7 @@ function generateNewsHtmlTemplate({
         <div class="article-breadcrumbs">
           <a href="/">${t.home}</a> 
           <span>›</span> 
-          <a href="${isSpanish ? '/news' : '/news/index.EN.html'}">${t.news}</a>
+          <a href="${isSpanish ? '/new' : '/en/new'}">${t.news}</a>
           <span>›</span> 
           <span>${isSpanish ? areaInfo.es : areaInfo.en}</span>
         </div>
