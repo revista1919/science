@@ -13,6 +13,7 @@ const JOURNAL_NAME_ES = 'Revista Nacional de las Ciencias para Estudiantes';
 const JOURNAL_NAME_EN = 'The National Review of Sciences for Students';
 const LOGO_ES = 'https://www.revistacienciasestudiantes.com/assets/logo.png';
 const LOGO_EN = 'https://www.revistacienciasestudiantes.com/logoEN.png';
+const SCIENCE_INDEX_PATH = path.join(__dirname, '..', 'science', 'index.json');
 
 // Asegurar directorios
 if (!fs.existsSync(OUTPUT_HTML_DIR)) {
@@ -23,6 +24,9 @@ const IMAGES_DIR = path.join(__dirname, 'images', 'news');
 if (!fs.existsSync(IMAGES_DIR)) {
   fs.mkdirSync(IMAGES_DIR, { recursive: true });
 }
+
+// Variable global para almacenar todas las noticias
+let globalAllNews = [];
 
 // ========== UTILIDADES ==========
 function generateSlug(text) {
@@ -132,8 +136,132 @@ async function processImages(html, slug, lang) {
     }
   }
   
-  // CORRECCIÓN: Extraer solo el contenido del body, no todo el HTML
   return $('body').html() || $.html();
+}
+
+// ========== FUNCIÓN PARA CARGAR NOTICIAS DE CIENCIA ==========
+function loadScienceNews() {
+  const allScienceNews = [];
+  
+  try {
+    if (!fs.existsSync(SCIENCE_INDEX_PATH)) {
+      console.warn('⚠️ No se encontró el índice de ciencia. Usando solo noticias internas.');
+      return allScienceNews;
+    }
+    
+    const scienceIndex = JSON.parse(fs.readFileSync(SCIENCE_INDEX_PATH, 'utf8'));
+    const years = Object.keys(scienceIndex.years || {}).sort().reverse();
+    
+    for (const year of years) {
+      const yearData = scienceIndex.years[year];
+      const yearJsonPath = path.join(__dirname, '..', 'science', year, yearData.json_file);
+      
+      if (fs.existsSync(yearJsonPath)) {
+        const yearNews = JSON.parse(fs.readFileSync(yearJsonPath, 'utf8'));
+        const newsArray = yearNews.news || yearNews;
+        
+        newsArray.forEach(item => {
+          allScienceNews.push({
+            id: item.id,
+            title_es: item.title?.es || '',
+            title_en: item.title?.en || '',
+            slug: item.slug || '',
+            photo: item.photo || '',
+            area_id: item.area_id || 'general',
+            featured: item.featured || false,
+            createdAt: item.metadata?.createdAt || '',
+            timestamp: item.metadata?.createdTimestamp || 0,
+            type: 'science'
+          });
+        });
+      }
+    }
+    
+    allScienceNews.sort((a, b) => b.timestamp - a.timestamp);
+    console.log(`🔬 ${allScienceNews.length} noticias de ciencia cargadas`);
+  } catch (err) {
+    console.warn('⚠️ Error cargando noticias de ciencia:', err.message);
+  }
+  
+  return allScienceNews;
+}
+
+// ========== FUNCIÓN DE RECOMENDACIONES ==========
+function getRecommendations(currentItem, allInternal, allScience, lang = 'es') {
+  // 1. Noticia más reciente (o segunda si la actual es la más reciente)
+  const sortedInternal = [...allInternal].sort((a, b) => 
+    new Date(b.fecha) - new Date(a.fecha)
+  );
+  
+  let recent = sortedInternal[0] || null;
+  if (recent && recent.slug === currentItem.slug) {
+    recent = sortedInternal[1] || null;
+  }
+
+  // 2. Otras internas aleatorias (excluyendo actual y la reciente)
+  const otherInternal = allInternal
+    .filter(n => n.slug !== currentItem.slug && n.slug !== recent?.slug)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 2);
+
+  // 3. Ciencia: priorizar featured + recientes, luego aleatorio
+  const featuredScience = allScience.filter(n => n.featured).slice(0, 2);
+  const otherScience = allScience
+    .filter(n => !n.featured)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
+
+  const scienceRecs = [...featuredScience, ...otherScience].slice(0, 3);
+
+  return {
+    recent,
+    otherInternal,
+    science: scienceRecs
+  };
+}
+
+// ========== FUNCIÓN PARA GENERAR HTML DE RECOMENDACIONES ==========
+function generateRecommendationsHtml(recs, lang, domain) {
+  const isSpanish = lang === 'es';
+  const t = {
+    title: isSpanish ? 'Artículos recomendados' : 'Recommended articles',
+    recent: isSpanish ? 'Más reciente' : 'Most recent',
+    science: isSpanish ? 'Investigación científica' : 'Scientific research',
+    more: isSpanish ? 'Ver más' : 'Read more'
+  };
+
+  const card = (item, type) => {
+    const title = type === 'science' 
+      ? (isSpanish ? item.title_es : item.title_en)
+      : (isSpanish ? item.titulo : (item.title || item.titulo));
+    
+    const href = type === 'science'
+      ? `${domain}/science/news/${item.slug}${isSpanish ? '' : '.EN'}.html`
+      : `${domain}/news/${item.slug}${isSpanish ? '' : '.EN'}.html`;
+    
+    const photo = item.photo || 'https://www.revistacienciasestudiantes.com/team.jpg';
+    const isRecent = type === 'internal' && item.slug === recs.recent?.slug;
+    
+    return `
+      <a href="${href}" class="rec-card">
+        <div class="rec-thumb">
+          <img src="${photo}" alt="${title}" loading="lazy">
+        </div>
+        <div class="rec-body">
+          <span class="rec-label">${type === 'science' ? t.science : (isRecent ? t.recent : '')}</span>
+          <h4>${title}</h4>
+        </div>
+      </a>`;
+  };
+
+  return `
+    <div class="sidebar-section recommendations-section">
+      <h3 class="sidebar-title">${t.title}</h3>
+      
+      ${recs.recent ? card(recs.recent, 'internal') : ''}
+      ${recs.otherInternal.map(n => card(n, 'internal')).join('')}
+      ${recs.science.map(n => card(n, 'science')).join('')}
+    </div>`;
 }
 
 // ========== MAPEO DE ÁREAS ==========
@@ -275,9 +403,15 @@ async function generateNews() {
       return dateB - dateA;
     });
 
+    // Guardar en variable global para las recomendaciones
+    globalAllNews = allNews;
+
+    // Cargar noticias de ciencia para recomendaciones cruzadas
+    const allScienceNews = loadScienceNews();
+
     console.log('📝 Generando HTML para cada noticia...');
     for (const newsItem of allNews) {
-      await generateNewsHtml(newsItem);
+      await generateNewsHtml(newsItem, allNews, allScienceNews);
     }
 
     console.log('📊 Generando índices...');
@@ -292,7 +426,7 @@ async function generateNews() {
   }
 }
 
-async function generateNewsHtml(item) {
+async function generateNewsHtml(item, allNewsItems, allScienceNews) {
   const titleEs = item.title?.es || item.titulo || '';
   const titleEn = item.title?.en || item.title || titleEs;
   const bodyEs = item.content?.es || item.cuerpo || '';
@@ -315,6 +449,13 @@ async function generateNewsHtml(item) {
 
   const processedBodyEs = await processImages(bodyEs, slug, 'es');
   const processedBodyEn = await processImages(bodyEn, slug, 'en');
+
+  // Obtener recomendaciones
+  const recommendationsEs = getRecommendations(item, allNewsItems, allScienceNews, 'es');
+  const recommendationsEn = getRecommendations(item, allNewsItems, allScienceNews, 'en');
+  
+  const recommendationsHtmlEs = generateRecommendationsHtml(recommendationsEs, 'es', DOMAIN);
+  const recommendationsHtmlEn = generateRecommendationsHtml(recommendationsEn, 'en', DOMAIN);
 
   // ========== HTML ESPAÑOL ==========
   const headerImageHtmlEs = photoUrl
@@ -342,7 +483,8 @@ async function generateNewsHtml(item) {
     tags,
     featured,
     socialLinks,
-    socialIcons
+    socialIcons,
+    recommendationsHtml: recommendationsHtmlEs
   });
 
   const filePathEs = path.join(OUTPUT_HTML_DIR, `${slug}.html`);
@@ -375,7 +517,8 @@ async function generateNewsHtml(item) {
     tags,
     featured,
     socialLinks,
-    socialIcons
+    socialIcons,
+    recommendationsHtml: recommendationsHtmlEn
   });
 
   const filePathEn = path.join(OUTPUT_HTML_DIR, `${slug}.EN.html`);
@@ -401,7 +544,8 @@ function generateNewsHtmlTemplate({
   tags,
   featured,
   socialLinks,
-  socialIcons
+  socialIcons,
+  recommendationsHtml
 }) {
   const isSpanish = lang === 'es';
   const readingTime = calculateReadingTime(content);
@@ -833,41 +977,47 @@ function generateNewsHtmlTemplate({
       margin-bottom: 0.75rem;
     }
 
-/* Asegura que el sidebar completo use sticky */
-.article-sidebar {
-  position: sticky;
-  top: 100px;
-  align-self: start;
-  max-height: calc(100vh - 140px);
-  overflow-y: auto;
-  padding-right: 10px;  /* Espacio para el scrollbar */
-}
+    .article-sidebar {
+      position: sticky;
+      top: 100px;
+      align-self: start;
+      max-height: calc(100vh - 140px);
+      overflow-y: auto;
+      padding-right: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+    .article-sidebar::-webkit-scrollbar {
+      width: 5px;
+    }
+    .article-sidebar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .article-sidebar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    .article-sidebar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
 
-/* Mantener el espaciado entre secciones */
-.sidebar-section {
-  margin-bottom: 40px;  /* Aumentado de 30px a 40px */
-  border-top: 2px solid var(--nyt-black);
-  padding-top: 20px;  /* Aumentado de 15px a 20px */
-}
+    @media (max-width: 900px) {
+      .article-sidebar {
+        position: static;
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+      }
+    }
 
-/* La última sección no necesita margen inferior */
-.sidebar-section:last-child {
-  margin-bottom: 0;
-}
-
-/* En móvil, desactivar el sticky */
-@media (max-width: 900px) {
-  .article-sidebar {
-    position: static;
-    max-height: none;
-    overflow-y: visible;
-    padding-right: 0;
-  }
-  
-  .sidebar-section {
-    margin-bottom: 30px;  /* Volver al margen original en móvil */
-  }
-}
+    .sidebar-section {
+      margin-bottom: 40px;
+      border-top: 2px solid var(--nyt-black);
+      padding-top: 20px;
+    }
+    .sidebar-section:last-child {
+      margin-bottom: 0;
+    }
     .sidebar-title {
       font-family: 'Inter', sans-serif;
       font-size: 0.85rem;
@@ -892,8 +1042,80 @@ function generateNewsHtmlTemplate({
       border-radius: 2px;
       text-decoration: none;
     }
-    
-    /* Newsletter Box */
+
+    /* ========== RECOMENDACIONES ========== */
+    .recommendations-section {
+      margin-top: 8px;
+    }
+    .rec-card {
+      display: flex;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border-light);
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.22s ease;
+    }
+    .rec-card:last-child {
+      border-bottom: none;
+    }
+    .rec-card:hover {
+      background: #f8fafc;
+      margin: 0 -10px;
+      padding-left: 10px;
+      padding-right: 10px;
+      border-radius: 6px;
+    }
+    .rec-thumb {
+      width: 76px;
+      height: 76px;
+      flex-shrink: 0;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #e2e8f0;
+    }
+    .rec-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+    .rec-card:hover .rec-thumb img {
+      transform: scale(1.07);
+    }
+    .rec-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .rec-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-color);
+      margin-bottom: 3px;
+    }
+    .rec-body h4 {
+      font-family: 'Merriweather', serif;
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--nyt-black);
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      transition: color 0.2s ease;
+    }
+    .rec-card:hover .rec-body h4 {
+      color: var(--accent-color);
+    }
+
     .newsletter-box {
       background: var(--bg-sidebar);
       border: 1px solid var(--border-light);
@@ -968,33 +1190,27 @@ function generateNewsHtmlTemplate({
       margin-bottom: 12px;
     }
 
-.toc-box {
-  position: sticky;
-  top: 100px;
-  max-height: calc(100vh - 140px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f8fafc;
-  /* NO usar position:sticky aquí porque ya el padre lo tiene */
-}
-
-/* Scrollbar personalizado para WebKit (Chrome, Safari, Edge) */
-.toc-box::-webkit-scrollbar {
-  width: 6px;
-}
-
-.toc-box::-webkit-scrollbar-track {
-  background: #f8fafc;
-}
-
-.toc-box::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-.toc-box::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
+    .toc-box {
+      position: sticky;
+      top: 100px;
+      max-height: calc(100vh - 140px);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 #f8fafc;
+    }
+    .toc-box::-webkit-scrollbar {
+      width: 6px;
+    }
+    .toc-box::-webkit-scrollbar-track {
+      background: #f8fafc;
+    }
+    .toc-box::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    .toc-box::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
     .toc-list {
       list-style: none;
       padding: 0;
@@ -1036,419 +1252,7 @@ function generateNewsHtmlTemplate({
       padding-left: 35px;
       font-size: 0.7rem;
     }
-/* ===================================================
-   CSS FINAL: CONTENIDO COMPLEJO EN ARTÍCULOS CIENTÍFICOS
-   Estilo Editorial / Nature / Elsevier High-End
-   Con manejo responsive completo para móvil y desktop
-   =================================================== */
 
-/* --- CONTENEDOR GENERAL --- */
-.article-body {
-  font-family: 'Lora', serif;
-  color: #222222;
-  font-size: 1.15rem;
-  line-height: 1.8;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-  word-break: break-word;
-  max-width: 100%;
-}
-
-/* --- IMÁGENES RESPONSIVE Y PIES DE FOTO --- */
-.article-body img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  margin: 2.5rem auto;
-  border-radius: 2px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-/* Imágenes flotantes con estilo editorial */
-.article-body img[style*="float: left"],
-.article-body .float-left {
-  float: left;
-  margin: 1.5rem 2.5rem 1.5rem 0;
-  max-width: 45%;
-  clear: left;
-}
-
-.article-body img[style*="float: right"],
-.article-body .float-right {
-  float: right;
-  margin: 1.5rem 0 1.5rem 2.5rem;
-  max-width: 45%;
-  clear: right;
-}
-
-/* Limpieza de floats */
-.article-body .clearfix::after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
-/* En dispositivos móviles, las imágenes flotantes ocupan todo el ancho */
-@media (max-width: 768px) {
-  .article-body img[style*="float: left"],
-  .article-body img[style*="float: right"],
-  .article-body .float-left,
-  .article-body .float-right {
-    float: none !important;
-    max-width: 100% !important;
-    margin: 2rem auto !important;
-  }
-}
-
-/* --- TABLAS DE DATOS (ESTILO ELSEVIER / ACADÉMICO) --- */
-.article-body table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 2.5rem 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.9rem;
-  border-top: 2px solid #0f172a;
-  border-bottom: 2px solid #0f172a;
-  display: block;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.article-body table thead {
-  background: #f8fafc;
-}
-
-.article-body table th {
-  font-weight: 700;
-  text-align: left;
-  padding: 14px 16px;
-  border-bottom: 1px solid #0f172a;
-  color: #0f172a;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.article-body table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #e2e8f0;
-  vertical-align: top;
-  line-height: 1.6;
-  color: #334155;
-}
-
-.article-body table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.article-body table tbody tr:hover {
-  background: #f8fafc;
-}
-
-/* Contenedor envolvente para tablas con scroll horizontal seguro */
-.article-body .table-wrapper {
-  overflow-x: auto;
-  margin: 2.5rem 0;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.article-body .table-wrapper table {
-  margin: 0;
-  border: none;
-  display: table;
-  min-width: 650px;
-}
-
-@media (max-width: 768px) {
-  .article-body table {
-    font-size: 0.8rem;
-  }
-  .article-body table th,
-  .article-body table td {
-    padding: 10px 12px;
-  }
-}
-
-/* --- TIPOGRAFÍA DE LISTAS --- */
-.article-body ul,
-.article-body ol {
-  margin: 1.75rem 0;
-  padding-left: 1.75rem;
-}
-
-/* Listas anidadas con indentación progresiva */
-.article-body ul ul,
-.article-body ol ol,
-.article-body ul ol,
-.article-body ol ul {
-  margin: 0.5rem 0;
-  padding-left: 1.5rem;
-}
-
-.article-body li {
-  margin-bottom: 0.75rem;
-  line-height: 1.7;
-}
-
-.article-body li > ul,
-.article-body li > ol {
-  margin-top: 0.5rem;
-}
-
-/* Listas de verificación personalizadas sin emojis */
-.article-body ul[data-checked="true"],
-.article-body ul[data-checked="false"] {
-  list-style: none;
-  padding-left: 0;
-}
-
-.article-body ul[data-checked="true"] li,
-.article-body ul[data-checked="false"] li {
-  padding-left: 2rem;
-  position: relative;
-}
-
-.article-body ul[data-checked="true"] li::before {
-  content: "✓";
-  position: absolute;
-  left: 0;
-  color: #16a34a;
-  font-weight: 800;
-  font-family: 'Inter', sans-serif;
-}
-
-.article-body ul[data-checked="false"] li::before {
-  content: "—";
-  position: absolute;
-  left: 0;
-  color: #64748b;
-  font-weight: 800;
-}
-
-/* --- FÓRMULAS MATEMÁTICAS (MATHJAX) --- */
-.article-body .ql-formula,
-.article-body .MathJax {
-  display: inline-block;
-  margin: 0 4px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
-  padding: 4px 0;
-  color: #0f172a;
-}
-
-/* Fórmulas en modo display */
-.article-body .MathJax_Display {
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
-  padding: 1.25rem 0;
-  margin: 2rem 0;
-  background: #fafaf9;
-  border-left: 3px solid #0f172a;
-  border-radius: 0 4px 4px 0;
-}
-
-@media (max-width: 768px) {
-  .article-body .ql-formula,
-  .article-body .MathJax {
-    font-size: 0.9rem;
-  }
-}
-
-/* --- BLOQUES DE CÓDIGO TIPO TERMINAL ACADÉMICA --- */
-.article-body pre {
-  background: #0f172a;
-  color: #f8fafc;
-  padding: 1.75rem;
-  border-radius: 6px;
-  overflow-x: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
-  line-height: 1.7;
-  margin: 2rem 0;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-  -webkit-overflow-scrolling: touch;
-}
-
-.article-body code {
-  font-family: 'JetBrains Mono', monospace;
-  background: #f1f5f9;
-  padding: 3px 6px;
-  border-radius: 4px;
-  font-size: 0.85em;
-  color: #0f172a;
-  border: 1px solid #e2e8f0;
-}
-
-.article-body pre code {
-  background: transparent;
-  padding: 0;
-  color: inherit;
-  font-size: inherit;
-  border: none;
-}
-
-/* --- CITAS TEXTUALES (BLOCKQUOTES) --- */
-.article-body blockquote {
-  margin: 2.5rem 0;
-  padding: 1.25rem 2rem;
-  border-left: 4px solid #0f172a;
-  background: #f8fafc;
-  font-family: 'Merriweather', serif;
-  font-style: italic;
-  font-size: 1.2rem;
-  color: #334155;
-  border-radius: 0 4px 4px 0;
-}
-
-.article-body blockquote p:last-child {
-  margin-bottom: 0;
-}
-
-/* --- ENCABEZADOS INTERNOS --- */
-.article-body h1[id],
-.article-body h2[id],
-.article-body h3[id],
-.article-body h4[id] {
-  scroll-margin-top: 100px;
-  font-family: 'Merriweather', serif;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.article-body h2 {
-  font-size: 1.85rem;
-  margin-top: 3rem;
-  margin-bottom: 1.25rem;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 0.5rem;
-}
-
-.article-body h3 {
-  font-size: 1.4rem;
-  margin-top: 2.5rem;
-  margin-bottom: 1rem;
-}
-
-/* --- ENLACES INTERNOS --- */
-.article-body a {
-  color: #0369a1;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
-  transition: color 0.2s;
-}
-
-.article-body a:hover {
-  color: #0f172a;
-  text-decoration-thickness: 2px;
-}
-
-/* --- VIDEOS Y RECURSOS MULTIMEDIA --- */
-.article-body video,
-.article-body iframe {
-  width: 100%;
-  max-width: 100%;
-  display: block;
-  margin: 2.5rem auto;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  border: 1px solid #e2e8f0;
-}
-
-/* --- ELEMENTOS COLAPSABLES (DETAILS / SUMMARY) --- */
-.article-body details {
-  margin: 2rem 0;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 1.25rem;
-  background: #fff;
-}
-
-.article-body summary {
-  cursor: pointer;
-  font-weight: 700;
-  color: #0f172a;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.95rem;
-  padding: 0.25rem;
-}
-
-.article-body details[open] summary {
-  border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
-}
-
-/* --- SEPARADORES --- */
-.article-body hr {
-  border: none;
-  border-top: 1px solid #cbd5e1;
-  margin: 3.5rem auto;
-  width: 40%;
-}
-
-/* --- BADGES EDITORIALES --- */
-.article-body .badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 3px;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 0 4px;
-  vertical-align: middle;
-}
-
-.article-body .badge-primary { background: #e0f2fe; color: #0369a1; }
-.article-body .badge-success { background: #dcfce7; color: #166534; }
-.article-body .badge-warning { background: #fef3c7; color: #92400e; }
-.article-body .badge-danger  { background: #fee2e2; color: #991b1b; }
-
-/* --- ACCESIBILIDAD Y MOVIMIENTO --- */
-.article-body :focus-visible {
-  outline: 2px solid #ea580c;
-  outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .article-body * {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* --- MEDIA QUERIES ADICIONALES --- */
-@media (max-width: 640px) {
-  .article-body {
-    font-size: 0.95rem;
-  }
-  
-  .article-body h2 {
-    font-size: 1.5rem;
-  }
-  
-  .article-body h3 {
-    font-size: 1.2rem;
-  }
-  
-  .article-body blockquote {
-    padding: 1rem;
-    font-size: 1.1rem;
-  }
-  
-  .article-body pre {
-    padding: 1rem;
-    font-size: 0.8rem;
-  }
-}
-    /* Audio Player */
     .audio-player-editorial {
       position: fixed;
       bottom: 24px;
@@ -1523,7 +1327,6 @@ function generateNewsHtmlTemplate({
       transition: width 0.1s linear;
     }
 
-    /* Footer */
     .footer {
       border-top: 1px solid var(--border-light);
       background: #fff;
@@ -1606,6 +1409,13 @@ function generateNewsHtmlTemplate({
         position: static;
         max-height: none;
       }
+      .rec-thumb {
+        width: 60px;
+        height: 60px;
+      }
+      .rec-body h4 {
+        font-size: 0.85rem;
+      }
     }
   </style>
 
@@ -1648,7 +1458,7 @@ function generateNewsHtmlTemplate({
         <div class="article-breadcrumbs">
           <a href="/">${t.home}</a> 
           <span>›</span> 
-          <a href="${isSpanish ? '/new' : '/en/new'}">${t.news}</a>
+          <a href="${isSpanish ? '/news' : '/news/index.EN.html'}">${t.news}</a>
           <span>›</span> 
           <span>${isSpanish ? areaInfo.es : areaInfo.en}</span>
         </div>
@@ -1715,6 +1525,8 @@ function generateNewsHtmlTemplate({
         </div>
       </div>
       ` : ''}
+
+      ${recommendationsHtml}
 
       <div class="sidebar-section">
         <div class="newsletter-box" id="newsletterBox">
@@ -1811,7 +1623,6 @@ function generateNewsHtmlTemplate({
       const scrolled = (winScroll / height) * 100;
       document.getElementById('progressBar').style.width = scrolled + '%';
       
-      // Highlight active TOC link
       highlightToc();
     });
 
@@ -1853,7 +1664,6 @@ function generateNewsHtmlTemplate({
 
     // ========== NEWSLETTER FIREBASE ==========
     document.addEventListener('DOMContentLoaded', function() {
-      // Firebase config
       const firebaseConfig = {
         apiKey: "AIzaSyArr3LE_hQLZG0L5m9JND2OWVL8elnSyWk",
         authDomain: "usuarios-rnce.firebaseapp.com",
@@ -2481,425 +2291,8 @@ function generateIndexes(newsItems, indexData) {
   const indexPathEn = path.join(OUTPUT_HTML_DIR, 'index.EN.html');
   fs.writeFileSync(indexPathEn, indexContentEn, 'utf8');
   console.log(`✅ Índice inglés: index.EN.html`);
-}
 
-
-// ========== GENERACIÓN DE ÍNDICES ==========
-function generateIndexes(newsItems, indexData) {
-  console.log('📊 Generando índices...');
-  
-  // Agrupar por año
-  const newsByYear = newsItems.reduce((acc, item) => {
-    const year = item.year || new Date(item.metadata?.createdAt || item.fecha || Date.now()).getFullYear();
-    if (!acc[year]) acc[year] = [];
-    acc[year].push(item);
-    return acc;
-  }, {});
-
-  // Ordenar años descendente
-  const sortedYears = Object.keys(newsByYear).sort().reverse();
-
-  // ========== ÍNDICE ESPAÑOL ==========
-  const indexContent = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Archivo de Noticias Científicas - ${JOURNAL_NAME_ES}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Lora:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary: #005a7d;
-      --text-main: #222222;
-      --text-light: #595959;
-      --border-color: #e5e7eb;
-      --bg-soft: #f8f9fa;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Lora', serif;
-      color: var(--text-main);
-      background-color: #f5f5f5;
-      line-height: 1.8;
-    }
-    .nav-minimal {
-      background: white;
-      border-bottom: 1px solid var(--border-color);
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      font-family: 'Inter', sans-serif;
-    }
-    .nav-logo {
-      font-weight: 700;
-      color: var(--primary);
-      text-decoration: none;
-      font-size: 0.9rem;
-      letter-spacing: 0.5px;
-    }
-    .main-wrapper {
-      max-width: 1000px;
-      margin: 3rem auto;
-      padding: 0 2rem;
-    }
-    .content-card {
-      background: white;
-      padding: 3rem;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-    }
-    h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: 3rem;
-      margin: 0 0 1rem;
-      line-height: 1.2;
-      color: var(--primary);
-    }
-    .description {
-      color: var(--text-light);
-      margin-bottom: 3rem;
-      font-size: 1.1rem;
-      border-bottom: 2px solid var(--primary);
-      padding-bottom: 1rem;
-    }
-    .year-section {
-      margin-bottom: 3rem;
-    }
-    .year-title {
-      font-family: 'Inter', sans-serif;
-      font-size: 2rem;
-      color: var(--primary);
-      margin: 0 0 1.5rem;
-      border-left: 4px solid var(--primary);
-      padding-left: 1rem;
-    }
-    .news-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .news-item {
-      margin-bottom: 1.5rem;
-      padding: 1.5rem;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      transition: all 0.2s;
-    }
-    .news-item:hover {
-      background: var(--bg-soft);
-      transform: translateX(5px);
-      border-left: 4px solid var(--primary);
-    }
-    .news-link {
-      color: var(--primary);
-      text-decoration: none;
-      font-size: 1.3rem;
-      font-weight: 600;
-      display: block;
-      margin-bottom: 0.5rem;
-      font-family: 'Playfair Display', serif;
-    }
-    .news-link:hover {
-      text-decoration: underline;
-    }
-    .news-meta {
-      color: var(--text-light);
-      font-size: 0.9rem;
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      font-family: 'Inter', sans-serif;
-      align-items: center;
-    }
-    .author-link {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .author-link:hover {
-      text-decoration: underline;
-    }
-    .news-excerpt {
-      margin-top: 1rem;
-      color: var(--text-main);
-      font-size: 1rem;
-    }
-    footer {
-      text-align: center;
-      padding: 4rem 2rem;
-      color: var(--text-light);
-      font-size: 0.9rem;
-      background: white;
-      border-top: 1px solid var(--border-color);
-    }
-    @media (max-width: 768px) {
-      .main-wrapper { padding: 0 1rem; }
-      .content-card { padding: 1.5rem; }
-      h1 { font-size: 2.2rem; }
-      .year-title { font-size: 1.6rem; }
-      .news-link { font-size: 1.1rem; }
-    }
-  </style>
-</head>
-<body>
-  <nav class="nav-minimal">
-    <a href="/" class="nav-logo">${JOURNAL_NAME_ES.toUpperCase()}</a>
-    <div class="issn">ISSN: 3087-2839</div>
-  </nav>
-  <div class="main-wrapper">
-    <main class="content-card">
-      <h1>Archivo de Noticias Científicas</h1>
-      <p class="description">Todas las noticias de divulgación científica, ordenadas por año de publicación.</p>
-      
-      ${sortedYears.map(year => `
-      <section class="year-section">
-        <h2 class="year-title">${year}</h2>
-        <ul class="news-list">
-          ${newsByYear[year].map(item => {
-            const title = item.title?.es || item.titulo || '';
-            const authorName = item.author?.name || 'Redacción Editorial';
-            const authorSlug = generateAuthorSlug(authorName);
-            const slug = item.slug || generateSlug(`${title} ${item.metadata?.createdAt || item.fecha}`);
-            const body = item.content?.es || item.cuerpo || '';
-            const excerpt = body.replace(/<[^>]*>/g, '').substring(0, 150) + '...';
-            const areaId = item.area_id || 'general';
-            const areaInfo = AREAS_MAP[areaId] || { es: areaId, en: areaId };
-            const dateStr = item.metadata?.createdAt || item.fecha || new Date().toISOString();
-            
-            return `
-            <li class="news-item">
-              <a href="/news/${slug}.html" class="news-link">${title}</a>
-              <div class="news-meta">
-                <span class="date">${formatDateEs(dateStr)}</span>
-                <a href="${DOMAIN}/team/${authorSlug}.html" class="author-link">${authorName}</a>
-                <span class="area">${areaInfo.es}</span>
-              </div>
-              <div class="news-excerpt">${excerpt}</div>
-            </li>
-          `;
-          }).join('')}
-        </ul>
-      </section>
-      `).join('')}
-    </main>
-  </div>
-  <footer>
-    <p>&copy; ${new Date().getFullYear()} ${JOURNAL_NAME_ES}</p>
-    <p style="margin-top: 0.5rem;"><a href="/" style="color: var(--primary); text-decoration: none;">Volver al inicio</a></p>
-  </footer>
-</body>
-</html>`;
-
-  const indexPath = path.join(OUTPUT_HTML_DIR, 'index.html');
-  fs.writeFileSync(indexPath, indexContent, 'utf8');
-  console.log(`✅ Índice español: index.html`);
-
-  // ========== ÍNDICE INGLÉS ==========
-  const indexContentEn = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scientific News Archive - ${JOURNAL_NAME_EN}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Lora:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary: #005a7d;
-      --text-main: #222222;
-      --text-light: #595959;
-      --border-color: #e5e7eb;
-      --bg-soft: #f8f9fa;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Lora', serif;
-      color: var(--text-main);
-      background-color: #f5f5f5;
-      line-height: 1.8;
-    }
-    .nav-minimal {
-      background: white;
-      border-bottom: 1px solid var(--border-color);
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      font-family: 'Inter', sans-serif;
-    }
-    .nav-logo {
-      font-weight: 700;
-      color: var(--primary);
-      text-decoration: none;
-      font-size: 0.9rem;
-      letter-spacing: 0.5px;
-    }
-    .main-wrapper {
-      max-width: 1000px;
-      margin: 3rem auto;
-      padding: 0 2rem;
-    }
-    .content-card {
-      background: white;
-      padding: 3rem;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-    }
-    h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: 3rem;
-      margin: 0 0 1rem;
-      line-height: 1.2;
-      color: var(--primary);
-    }
-    .description {
-      color: var(--text-light);
-      margin-bottom: 3rem;
-      font-size: 1.1rem;
-      border-bottom: 2px solid var(--primary);
-      padding-bottom: 1rem;
-    }
-    .year-section {
-      margin-bottom: 3rem;
-    }
-    .year-title {
-      font-family: 'Inter', sans-serif;
-      font-size: 2rem;
-      color: var(--primary);
-      margin: 0 0 1.5rem;
-      border-left: 4px solid var(--primary);
-      padding-left: 1rem;
-    }
-    .news-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .news-item {
-      margin-bottom: 1.5rem;
-      padding: 1.5rem;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      transition: all 0.2s;
-    }
-    .news-item:hover {
-      background: var(--bg-soft);
-      transform: translateX(5px);
-      border-left: 4px solid var(--primary);
-    }
-    .news-link {
-      color: var(--primary);
-      text-decoration: none;
-      font-size: 1.3rem;
-      font-weight: 600;
-      display: block;
-      margin-bottom: 0.5rem;
-      font-family: 'Playfair Display', serif;
-    }
-    .news-link:hover {
-      text-decoration: underline;
-    }
-    .news-meta {
-      color: var(--text-light);
-      font-size: 0.9rem;
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      font-family: 'Inter', sans-serif;
-      align-items: center;
-    }
-    .author-link {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .author-link:hover {
-      text-decoration: underline;
-    }
-    .news-excerpt {
-      margin-top: 1rem;
-      color: var(--text-main);
-      font-size: 1rem;
-    }
-    footer {
-      text-align: center;
-      padding: 4rem 2rem;
-      color: var(--text-light);
-      font-size: 0.9rem;
-      background: white;
-      border-top: 1px solid var(--border-color);
-    }
-    @media (max-width: 768px) {
-      .main-wrapper { padding: 0 1rem; }
-      .content-card { padding: 1.5rem; }
-      h1 { font-size: 2.2rem; }
-      .year-title { font-size: 1.6rem; }
-      .news-link { font-size: 1.1rem; }
-    }
-  </style>
-</head>
-<body>
-  <nav class="nav-minimal">
-    <a href="/" class="nav-logo">${JOURNAL_NAME_EN.toUpperCase()}</a>
-    <div class="issn">ISSN: 3087-2839</div>
-  </nav>
-  <div class="main-wrapper">
-    <main class="content-card">
-      <h1>Scientific News Archive</h1>
-      <p class="description">All scientific outreach news, sorted by year of publication.</p>
-      
-      ${sortedYears.map(year => `
-      <section class="year-section">
-        <h2 class="year-title">${year}</h2>
-        <ul class="news-list">
-          ${newsByYear[year].map(item => {
-            const title = item.title?.en || item.title || '';
-            const authorName = item.author?.name || 'Editorial Staff';
-            const authorSlug = generateAuthorSlug(authorName);
-            const slug = item.slug || generateSlug(`${title} ${item.metadata?.createdAt || item.fecha}`);
-            const body = item.content?.en || item.content || '';
-            const excerpt = body.replace(/<[^>]*>/g, '').substring(0, 150) + '...';
-            const areaId = item.area_id || 'general';
-            const areaInfo = AREAS_MAP[areaId] || { es: areaId, en: areaId };
-            const dateStr = item.metadata?.createdAt || item.fecha || new Date().toISOString();
-            
-            return `
-            <li class="news-item">
-              <a href="/news/${slug}.EN.html" class="news-link">${title}</a>
-              <div class="news-meta">
-                <span class="date">${formatDateEn(dateStr)}</span>
-                <a href="${DOMAIN}/team/${authorSlug}.html" class="author-link">${authorName}</a>
-                <span class="area">${areaInfo.en}</span>
-              </div>
-              <div class="news-excerpt">${excerpt}</div>
-            </li>
-          `;
-          }).join('')}
-        </ul>
-      </section>
-      `).join('')}
-    </main>
-  </div>
-  <footer>
-    <p>&copy; ${new Date().getFullYear()} ${JOURNAL_NAME_EN}</p>
-    <p style="margin-top: 0.5rem;"><a href="/" style="color: var(--primary); text-decoration: none;">Back to home</a></p>
-  </footer>
-</body>
-</html>`;
-
-  const indexPathEn = path.join(OUTPUT_HTML_DIR, 'index.EN.html');
-  fs.writeFileSync(indexPathEn, indexContentEn, 'utf8');
-  console.log(`✅ Índice inglés: index.EN.html`);
-
-  // ========== RSS FEED ==========
+  // RSS Feed
   generateRssFeed(newsItems);
 }
 
